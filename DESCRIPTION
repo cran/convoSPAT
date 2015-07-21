@@ -1,0 +1,28 @@
+Package: convoSPAT
+Type: Package
+Title: Convolution-Based Nonstationary Spatial Modeling
+Version: 0.1
+Date: 2015-07-20
+Authors@R: person("Mark D.", "Risser", email = "markdrisser@gmail.com",
+    role = c("aut", "cre"))
+Description: Fits convolution-based nonstationary
+    Gaussian process models to point-referenced spatial data. The nonstationary
+    covariance function allows the user to specify the underlying correlation
+    structure and which spatial dependence parameters should be allowed to
+    vary over space: the anisotropy, nugget variance, and process variance.
+    The parameters are estimated via maximum likelihood, using a local
+    likelihood approach. Also provided are functions to fit stationary spatial
+    models for comparison, calculate the kriging predictor and standard errors,
+    and create various plots to visualize nonstationarity.
+Depends: R (>= 3.1.2)
+License: MIT + file LICENSE
+LazyData: TRUE
+Imports: stats, graphics, ellipse, fields, geoR, MASS, plotrix,
+        StatMatch
+URL: http://github.com/markdrisser/convoSPAT
+Packaged: 2015-07-20 22:06:53 UTC; markdrisser
+Author: Mark D. Risser [aut, cre]
+Maintainer: Mark D. Risser <markdrisser@gmail.com>
+NeedsCompilation: no
+Repository: CRAN
+Date/Publication: 2015-07-21 07:53:15
