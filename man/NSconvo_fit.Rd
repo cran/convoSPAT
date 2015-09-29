@@ -98,7 +98,7 @@ three, containing values for tausq, sigmasq, and nu. Defaults to
 residual variance from using \code{\link[stats]{lm}} with \code{mean.model}.}
 }
 \value{
-A list with the following components:
+A "NSconvo" object, with the following components:
 \item{mc.locations}{Mixture component locations used for the simulated
 data.}
 \item{mc.kernels}{Mixture component kernel matrices used for the simulated
