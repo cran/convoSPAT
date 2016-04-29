@@ -38,6 +38,9 @@
 #' a geodata object only allows \code{data} to be a vector (no replicates).
 #' If not provided, the arguments \code{coords} and \code{data} must be
 #' provided instead.
+#' @param sp.SPDF A "\code{SpatialPointsDataFrame}" object, which contains the
+#' spatial coordinates and additional attribute variables corresponding to the
+#' spatoal coordinates
 #' @param coords An N x 2 matrix where each row has the two-dimensional
 #' coordinates of the N data locations. By default, it takes the \code{coords}
 #' component of the argument \code{geodata}, if provided.
@@ -159,7 +162,8 @@
 #' @importFrom stats lm
 #' @importFrom stats optim
 
-NSconvo_fit <- function( geodata, coords = geodata$coords, data = geodata$data,
+NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
+                         coords = geodata$coords, data = geodata$data,
                          cov.model = "exponential", mean.model = data ~ 1,
                          mc.locations = NULL, N.mc = NULL, lambda.w = NULL,
                          mc.kernels = NULL, fit.radius = NULL,
@@ -167,6 +171,26 @@ NSconvo_fit <- function( geodata, coords = geodata$coords, data = geodata$data,
                          local.pars.LB = NULL, local.pars.UB = NULL,
                          global.pars.LB = NULL, global.pars.UB = NULL,
                          local.ini.pars = NULL, global.ini.pars = NULL ){
+
+  if( is.null(fit.radius) ){cat("\nPlease specify a fitting radius.\n")}
+  #===========================================================================
+  # Formatting for coordinates/data
+  #===========================================================================
+  if( is.null(geodata) == FALSE ){
+    if( class(geodata) != "geodata" ){
+      cat("\nPlease use a geodata object for the 'geodata = ' input.\n")
+    }
+    coords <- geodata$coords
+    data <- geodata$data
+  }
+  if( is.null(sp.SPDF) == FALSE ){
+    if( class(sp.SPDF) != "SpatialPointsDataFrame" ){
+      cat("\nPlease use a SpatialPointsDataFrame object for the 'sp.SPDF = ' input.\n")
+    }
+    geodata <- geoR::as.geodata( sp.SPDF )
+    coords <- geodata$coords
+    data <- geodata$data
+  }
 
   coords <- as.matrix(coords)
   N <- dim(coords)[1]
@@ -177,8 +201,8 @@ NSconvo_fit <- function( geodata, coords = geodata$coords, data = geodata$data,
   if( cov.model != "cauchy" & cov.model != "matern" & cov.model != "circular" &
         cov.model != "cubic" & cov.model != "gaussian" & cov.model != "exponential" &
         cov.model != "spherical" & cov.model != "wave" ){
-    cat("Please specify a valid covariance model (cauchy, matern, circular, cubic, gaussian,
-          exponential, spherical, or wave). \n")
+    cat("\nPlease specify a valid covariance model (cauchy, matern,\ncircular, cubic, gaussian,
+          exponential, spherical, or wave).\n")
   }
 
   #===========================================================================
@@ -209,6 +233,14 @@ NSconvo_fit <- function( geodata, coords = geodata$coords, data = geodata$data,
   }
 
   K <- dim(mc.locations)[1]
+
+  #===========================================================================
+  # Check the mixture component locations
+  #===========================================================================
+  check.mc.locs <- mc_N( coords, mc.locations, fit.radius )
+  cat(paste("The", K, "local models will be fit with local sample sizes\nranging between", min(check.mc.locs),
+            "and", max(check.mc.locs), ".\n" ))
+  if( min(check.mc.locs) < 5 ){cat("\nWARNING: at least one of the mc locations has too few data points.\n")}
 
   #===========================================================================
   # Set the tuning parameter, if not specified
@@ -1010,6 +1042,9 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
 #' a geodata object only allows \code{data} to be a vector (no replicates).
 #' If not provided, the arguments \code{coords} and \code{data} must be
 #' provided instead.
+#' @param sp.SPDF A "\code{SpatialPointsDataFrame}" object, which contains the
+#' spatial coordinates and additional attribute variables corresponding to the
+#' spatoal coordinates
 #' @param coords An N x 2 matrix where each row has the two-dimensional
 #' coordinates of the N data locations. By default, it takes the \code{coords}
 #' component of the argument \code{geodata}, if provided.
@@ -1090,10 +1125,30 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
 #' @importFrom stats lm
 #' @importFrom stats optim
 
-Aniso_fit <- function( geodata, coords = geodata$coords, data = geodata$data,
+Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
+                       coords = geodata$coords, data = geodata$data,
                        cov.model = "exponential", mean.model = data ~ 1,
                        local.pars.LB = NULL, local.pars.UB = NULL,
                        local.ini.pars = NULL ){
+
+  #===========================================================================
+  # Formatting for coordinates/data
+  #===========================================================================
+  if( is.null(geodata) == FALSE ){
+    if( class(geodata) != "geodata" ){
+      cat("\nPlease use a geodata object for the 'geodata = ' input.\n")
+    }
+    coords <- geodata$coords
+    data <- geodata$data
+  }
+  if( is.null(sp.SPDF) == FALSE ){
+    if( class(sp.SPDF) != "SpatialPointsDataFrame" ){
+      cat("\nPlease use a SpatialPointsDataFrame object for the 'sp.SPDF = ' input.\n")
+    }
+    geodata <- geoR::as.geodata( sp.SPDF )
+    coords <- geodata$coords
+    data <- geodata$data
+  }
 
   N <- dim(coords)[1]
   data <- as.matrix(data)

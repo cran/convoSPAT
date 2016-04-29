@@ -22,10 +22,10 @@
 #' generalized linear models for each of the eigenvalues (lam1 and lam2) and
 #' the angle of rotation (eta).
 #'
-#' @param lat.min Lower bound for the y-coordinate axis.
-#' @param lat.max Upper bound for the y-coordinate axis.
-#' @param lon.min Lower bound for the y-coordinate axis.
-#' @param lon.max Upper bound for the y-coordinate axis.
+#' @param y.min Lower bound for the y-coordinate axis.
+#' @param y.max Upper bound for the y-coordinate axis.
+#' @param x.min Lower bound for the y-coordinate axis.
+#' @param x.max Upper bound for the y-coordinate axis.
 #' @param N.mc Number of mixture component locations.
 #' @param lam1.coef Log-linear regression coefficients for lam1; the
 #' coefficients correspond to the intercept, longitude, and latitude.
@@ -41,24 +41,24 @@
 #' corresponding to each of the mixture component locations.}
 #'
 #' @examples
-#' f_mc_kernels( lat.min = 0, lat.max = 5, lon.min = 0,
-#' lon.max = 5, N.mc = 3^2, lam1.coef = c(-1.3, 0.5, -0.6),
+#' f_mc_kernels( y.min = 0, y.max = 5, x.min = 0,
+#' x.max = 5, N.mc = 3^2, lam1.coef = c(-1.3, 0.5, -0.6),
 #' lam2.coef = c(-1.4, -0.1, 0.2), logit.eta.coef = c(0, -0.15, 0.15) )
 #'
 #'
 #' @export
-f_mc_kernels <- function( lat.min = 0, lat.max = 5, lon.min = 0, lon.max = 5,
+f_mc_kernels <- function( y.min = 0, y.max = 5, x.min = 0, x.max = 5,
                              N.mc = 3^2, lam1.coef = c(-1.3, 0.5, -0.6),
                              lam2.coef = c(-1.4, -0.1, 0.2),
                              logit.eta.coef = c(0, -0.15, 0.15) ){
 
   #=======================================
   # mixture component knot locations
-  mc.x <- seq(from = lon.min + 0.5*(lon.max - lon.min)/floor(sqrt(N.mc)),
-                 to = lon.max - 0.5*(lon.max - lon.min)/floor(sqrt(N.mc)),
+  mc.x <- seq(from = x.min + 0.5*(x.max - x.min)/floor(sqrt(N.mc)),
+                 to = x.max - 0.5*(x.max - x.min)/floor(sqrt(N.mc)),
                  length = floor(sqrt(N.mc)) )
-  mc.y <- seq(from = lat.min + 0.5*(lat.max - lat.min)/floor(sqrt(N.mc)),
-                 to = lat.max - 0.5*(lat.max - lat.min)/floor(sqrt(N.mc)),
+  mc.y <- seq(from = y.min + 0.5*(y.max - y.min)/floor(sqrt(N.mc)),
+                 to = y.max - 0.5*(y.max - y.min)/floor(sqrt(N.mc)),
                  length = floor(sqrt(N.mc)) )
   mc.locations <- expand.grid( mc.x, mc.y )
   mc.locations <- matrix(c(mc.locations[,1], mc.locations[,2]), ncol=2, byrow=F)
@@ -108,10 +108,10 @@ f_mc_kernels <- function( lat.min = 0, lat.max = 5, lon.min = 0, lon.max = 5,
 #'
 #' @param grid Logical; indicates of the simulated data should fall on a
 #' grid (\code{TRUE}) or not (\code{FALSE}).
-#' @param lat.min Lower bound for the y-coordinate axis.
-#' @param lat.max Upper bound for the y-coordinate axis.
-#' @param lon.min Lower bound for the y-coordinate axis.
-#' @param lon.max Upper bound for the y-coordinate axis.
+#' @param y.min Lower bound for the y-coordinate axis.
+#' @param y.max Upper bound for the y-coordinate axis.
+#' @param x.min Lower bound for the y-coordinate axis.
+#' @param x.max Upper bound for the y-coordinate axis.
 #' @param N.obs Number of simulated data values.
 #' @param sim.locations Optional \code{N.obs} x 2 matrix; allows the user
 #' to specify the locations of the simulated data.
@@ -148,8 +148,8 @@ f_mc_kernels <- function( lat.min = 0, lat.max = 5, lon.min = 0, lon.max = 5,
 #'
 #' @examples
 #' \dontrun{
-#' NSconvo_sim( grid = TRUE, lat.min = 0, lat.max = 5, lon.min = 0,
-#' lon.max = 5, N.obs = 20^2, sim.locations = NULL, mc.kernels.obj = NULL,
+#' NSconvo_sim( grid = TRUE, y.min = 0, y.max = 5, x.min = 0,
+#' x.max = 5, N.obs = 20^2, sim.locations = NULL, mc.kernels.obj = NULL,
 #' mc.kernels = NULL, mc.locations = NULL, lambda.w = NULL,
 #' tausq = 0.1, sigmasq = 1, beta.coefs = 4, kappa = NULL,
 #' covariates = rep(1,N.obs), cov.model = "exponential" )
@@ -158,8 +158,8 @@ f_mc_kernels <- function( lat.min = 0, lat.max = 5, lon.min = 0, lon.max = 5,
 #' @export
 #' @importFrom stats runif
 
-NSconvo_sim <- function( grid = TRUE, lat.min = 0, lat.max = 5, lon.min = 0,
-                         lon.max = 5, N.obs = 20^2, sim.locations = NULL, mc.kernels.obj = NULL,
+NSconvo_sim <- function( grid = TRUE, y.min = 0, y.max = 5, x.min = 0,
+                         x.max = 5, N.obs = 20^2, sim.locations = NULL, mc.kernels.obj = NULL,
                          mc.kernels = NULL, mc.locations = NULL, lambda.w = NULL,
                          tausq = 0.1, sigmasq = 1, beta.coefs = 4, kappa = NULL,
                          covariates = rep(1,N.obs), cov.model = "exponential" ){
@@ -168,14 +168,14 @@ NSconvo_sim <- function( grid = TRUE, lat.min = 0, lat.max = 5, lon.min = 0,
   # Observed locations
   if( is.null(sim.locations) == TRUE ){
     if( grid == TRUE ){
-      sim.x <- seq(from = lon.min, to = lon.max, length = floor(sqrt(N.obs)))
-      sim.y <- seq(from = lat.min, to = lat.max, length = floor(sqrt(N.obs)))
+      sim.x <- seq(from = x.min, to = x.max, length = floor(sqrt(N.obs)))
+      sim.y <- seq(from = y.min, to = y.max, length = floor(sqrt(N.obs)))
       sim.locations <- expand.grid(sim.x, sim.y)
       sim.locations <- matrix(c(sim.locations[,1], sim.locations[,2]), ncol=2, byrow=F)
     }
     if( grid == FALSE ){
-      sim.x <- (lon.max - lon.min)*runif(N.obs) + lon.min
-      sim.y <- (lat.max - lat.min)*runif(N.obs) + lat.min
+      sim.x <- (x.max - x.min)*runif(N.obs) + x.min
+      sim.y <- (y.max - y.min)*runif(N.obs) + y.min
       sim.locations <- matrix(c(sim.x, sim.y), ncol=2, byrow=F)
       covariates = cbind(rep(1, N.obs), sim.locations)
     }

@@ -185,9 +185,9 @@ mc_N <- function( coords, mc.locations, fit.radius ){
 #ROxygen comments ----
 #' Evaluation criteria
 #'
-#' Calculate two evaluation criteria -- continuous rank probability score
-#' (CRPS) and mean squared prediction error (MSPE) -- comparing hold-out
-#' data and predictions.
+#' Calculate three evaluation criteria -- continuous rank probability score
+#' (CRPS), prediction mean square deviation ratio (pMSDR), and mean squared prediction
+#' error (MSPE) -- comparing hold-out data and predictions.
 #'
 #' @param holdout.data Observed/true data that has been held out for model
 #' comparison.
@@ -199,6 +199,7 @@ mc_N <- function( coords, mc.locations, fit.radius ){
 #' @return A list with the following components:
 #' \item{CRPS}{The CRPS averaged over all hold-out locations.}
 #' \item{MSPE}{The mean squared prediction error.}
+#' \item{pMSDR}{The prediction mean square deviation ratio.}
 #'
 #' @examples
 #' \dontrun{
@@ -227,9 +228,14 @@ evaluate_CV <- function( holdout.data, pred.mean, pred.SDs ){
   # MSPE
   MSPE <- mean( (holdout.data - pred.mean)^2 )
 
+  # pMSDR
+  pMSDR <- mean( (holdout.data - pred.mean)^2/pred.SDs )
+
+
   # Output
   output <- list( CRPS = mean(CRPS_out),
-                  MSPE = MSPE )
+                  MSPE = MSPE,
+                  pMSDR = pMSDR)
   return(output)
 }
 
