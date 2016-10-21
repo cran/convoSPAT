@@ -238,9 +238,23 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   # Check the mixture component locations
   #===========================================================================
   check.mc.locs <- mc_N( coords, mc.locations, fit.radius )
-  cat(paste("The", K, "local models will be fit with local sample sizes\nranging between", min(check.mc.locs),
-            "and", max(check.mc.locs), ".\n" ))
+  cat("\n-------------------------------------------------------\n")
+  cat(paste("Fitting the nonstationary model: ", K, " local models with\nlocal sample sizes ranging between ", min(check.mc.locs),
+            " and ", max(check.mc.locs), ".", sep = "" ))
+  if( ns.nugget == FALSE & ns.variance == FALSE ){
+    cat("\nConstant nugget and constant variance.")
+  }
+  if( ns.nugget == FALSE & ns.variance == TRUE ){
+    cat("\nConstant nugget and spatially-varing variance.")
+  }
+  if( ns.nugget == TRUE & ns.variance == FALSE ){
+    cat("\nSpatially-varing nugget and constant variance.")
+  }
+  if( ns.nugget == TRUE & ns.variance == TRUE ){
+    cat("\nSpatially-varing nugget and spatially-varing variance.")
+  }
   if( min(check.mc.locs) < 5 ){cat("\nWARNING: at least one of the mc locations has too few data points.\n")}
+  cat("\n-------------------------------------------------------\n")
 
   #===========================================================================
   # Set the tuning parameter, if not specified
@@ -399,8 +413,10 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
       temp.data <- temp.dat[distances <= fit.radius,]
       temp.data <- as.matrix(temp.data, nrow=n.fit)
 
-      cat("Calculating the mixture component parameter set for location ", k," using ",
-                  n.fit," observations. \n", sep="")
+      if(k == 1){
+        cat("Calculating the parameter set for:\n")
+      }
+      cat("mixture component location ", k,", using ", n.fit," observations...\n", sep="")
 
       # Covariance models with the kappa parameter
       if( cov.model == "matern" || cov.model == "cauchy" ){
@@ -420,7 +436,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                        upper=c( lam1.UB, lam2.UB, pi/2,
                                 tausq.local.UB, sigmasq.local.UB, kappa.local.UB ) )
         if( MLEs$convergence != 0 ){
-          cat( "There was an error with optim(): \n", MLEs$message, "\n" )
+          if( MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+          }
         }
         MLE.pars <- MLEs$par
       }
@@ -442,7 +465,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                        upper=c( lam1.UB, lam2.UB, pi/2,
                                 tausq.local.UB, sigmasq.local.UB ) )
         if( MLEs$convergence != 0 ){
-          cat( "There was an error with optim(): \n", MLEs$message, "\n" )
+          if( MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+          }
         }
 
         MLE.pars <- c(MLEs$par, NA)
@@ -572,9 +602,18 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                              method = "L-BFGS-B",
                              lower=c( tausq.global.LB, sigmasq.global.LB ),
                              upper=c( tausq.global.UB, sigmasq.global.UB ) )
+
       if( overall.MLEs$convergence != 0 ){
-        cat( "There was an error with optim(): \n", overall.MLEs$message, "\n" )
+        if( overall.MLEs$convergence == 52 ){
+          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
+        else{
+          cat( paste("  There was an error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
       }
+
       tausq.MLE <- overall.MLEs$par[1]
       sigmasq.MLE <- overall.MLEs$par[2]
 
@@ -598,7 +637,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                              lower=c( sigmasq.global.LB ),
                              upper=c( sigmasq.global.UB ) )
       if( overall.MLEs$convergence != 0 ){
-        cat( "There was an error with optim(): \n", overall.MLEs$message, "\n" )
+        if( overall.MLEs$convergence == 52 ){
+          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
+        else{
+          cat( paste("  There was an error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
       }
       sigmasq.MLE <- overall.MLEs$par[1]
       global.lik <- overall.MLEs$value
@@ -623,7 +669,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                              upper=c( tausq.global.UB ) )
 
       if( overall.MLEs$convergence != 0 ){
-        cat( "There was an error with optim(): \n", overall.MLEs$message, "\n" )
+        if( overall.MLEs$convergence == 52 ){
+          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
+        else{
+          cat( paste("  There was an error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
       }
       tausq.MLE <- overall.MLEs$par[1]
       global.lik <- overall.MLEs$value
@@ -704,7 +757,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                             lower=c( tausq.global.LB, sigmasq.global.LB, kappa.global.LB ),
                             upper=c( tausq.global.UB, sigmasq.global.UB, kappa.global.UB ) )
       if( overall.MLEs$convergence != 0 ){
-        cat( "There was an error with optim(): \n", overall.MLEs$message, "\n" )
+        if( overall.MLEs$convergence == 52 ){
+          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
+        else{
+          cat( paste("  There was an error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
       }
       tausq.MLE <- overall.MLEs$par[1]
       sigmasq.MLE <- overall.MLEs$par[2]
@@ -732,7 +792,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                             lower=c( sigmasq.global.LB, kappa.global.LB ),
                             upper=c( sigmasq.global.UB, kappa.global.UB ) )
       if( overall.MLEs$convergence != 0 ){
-        cat( "There was an error with optim(): \n", overall.MLEs$message, "\n" )
+        if( overall.MLEs$convergence == 52 ){
+          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
+        else{
+          cat( paste("  There was an error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
       }
       sigmasq.MLE <- overall.MLEs$par[1]
       kappa.MLE <- overall.MLEs$par[2]
@@ -761,7 +828,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                             lower=c( tausq.global.LB, kappa.global.LB ),
                             upper=c( tausq.global.UB, kappa.global.UB ) )
       if( overall.MLEs$convergence != 0 ){
-        cat( "There was an error with optim(): \n", overall.MLEs$message, "\n" )
+        if( overall.MLEs$convergence == 52 ){
+          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
+        else{
+          cat( paste("  There was an error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
       }
       tausq.MLE <- overall.MLEs$par[1]
       kappa.MLE <- overall.MLEs$par[2]
@@ -787,7 +861,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                              lower=c( kappa.global.LB ),
                              upper=c( kappa.global.UB ) )
       if( overall.MLEs$convergence != 0 ){
-        cat( "There was an error with optim(): \n", overall.MLEs$message, "\n" )
+        if( overall.MLEs$convergence == 52 ){
+          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
+        else{
+          cat( paste("  There was an error with optim(): \n  ",
+                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+        }
       }
 
       kappa.MLE <- overall.MLEs$par[1]
@@ -1248,6 +1329,10 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
   # MLEs
   #===========================================================================
 
+  cat("\n-------------------------------------------------------\n")
+  cat("Fitting the stationary (anisotropic) model.")
+  cat("\n-------------------------------------------------------\n")
+
   cat("Estimating the variance/covariance parameters. \n")
 
   # Covariance models with the kappa parameter
@@ -1268,7 +1353,14 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
                    upper=c( lam1.UB, lam2.UB, pi/2,
                             tausq.local.UB, sigmasq.local.UB, kappa.local.UB ) )
     if( MLEs$convergence != 0 ){
-      cat("There was an error with optim(): \n", MLEs$message, "\n")
+      if( MLEs$convergence == 52 ){
+        cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                   MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+      }
+      else{
+        cat( paste("  There was an error with optim(): \n  ",
+                   MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+      }
     }
     MLE.pars <- MLEs$par
   }
@@ -1290,7 +1382,14 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
                    upper=c( lam1.UB, lam2.UB, pi/2,
                             tausq.local.UB, sigmasq.local.UB ) )
     if( MLEs$convergence != 0 ){
-      cat("There was an error with optim(): \n", MLEs$message, "\n")
+      if( MLEs$convergence == 52 ){
+        cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                   MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+      }
+      else{
+        cat( paste("  There was an error with optim(): \n  ",
+                   MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+      }
     }
 
     MLE.pars <- c(MLEs$par, NA)
