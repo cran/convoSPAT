@@ -5,7 +5,7 @@
 \title{Constructor functions for global parameter estimation.}
 \usage{
 make_global_loglik3_kappa(data, Xmat, cov.model, Scalemat, Distmat,
-  obs.variance)
+  obs.variance, nugg2.var)
 }
 \arguments{
 \item{data}{A vector or matrix of data to use in the likelihood
@@ -22,6 +22,8 @@ covariance function.}
 
 \item{obs.variance}{A vector containing the spatially-varying variance
 corresponding to each data location.}
+
+\item{nugg2.var}{Fixed values for the variance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.

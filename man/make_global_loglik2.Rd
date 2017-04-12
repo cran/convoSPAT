@@ -12,7 +12,7 @@ calculation.}
 
 \item{Xmat}{The design matrix for the mean model.}
 
-\item{Corr}{The correlation matrix matrix.}
+\item{Corr}{The correlation matrix.}
 
 \item{obs.nuggets}{A vector containing the spatially-varying nuggets
 corresponding to each data location.}

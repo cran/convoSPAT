@@ -36,14 +36,25 @@ summary.NSconvo <- function( object, ... )
     warning("Object is not of type NSconvo.")
   }
   else{
-    cat("Locally estimated mean and variance parameters: \n")
+    # Print the estimated variance/covariance parameters ============
+    cat("Locally estimated variance/covariance parameters: \n")
     print(round(object$MLEs.save, 5))
     cat("\n")
-    cat("Estimate of the mean coefficients: ", round(object$beta.GLS,
-                                                     4), "\n")
-    cat("\n")
-    cat("Regression table for mean coefficients: \n")
-    print(round(object$Mean.coefs, 5))
+
+    # Print the estimated mean coefficients =========================
+    if( object$ns.mean == FALSE ){
+      cat("Estimate of the mean coefficients: ", round(object$beta.GLS,
+                                                       4), "\n")
+      cat("\n")
+      cat("Regression table for mean coefficients: \n")
+      print(round(object$Mean.coefs, 5))
+    }
+    if( object$ns.mean == TRUE ){
+      cat("Spatially-varying mean coefficients. \n Average coefficients: ",
+          round(apply(object$beta.est, 2, mean), 4), "\n")
+    }
+
+    # Summarize global estimates of variance/covariance parameters ==
     cat("\n")
     if (is.null(object$ns.nugget) == FALSE) {
       if (object$ns.nugget == FALSE) {

@@ -1,8 +1,8 @@
 Package: convoSPAT
 Type: Package
 Title: Convolution-Based Nonstationary Spatial Modeling
-Version: 1.1.1
-Date: 2016-09-28
+Version: 1.2
+Date: 2017-04-12
 Authors@R: person("Mark D.", "Risser", email = "markdrisser@gmail.com",
     role = c("aut", "cre"))
 Description: Fits convolution-based nonstationary
@@ -22,8 +22,8 @@ Imports: stats, graphics, ellipse, fields, geoR, MASS, plotrix,
 URL: http://github.com/markdrisser/convoSPAT
 RoxygenNote: 5.0.1
 NeedsCompilation: no
-Packaged: 2016-10-20 21:37:03 UTC; MDRisser
+Packaged: 2017-04-12 16:26:30 UTC; MDRisser
 Author: Mark D. Risser [aut, cre]
 Maintainer: Mark D. Risser <markdrisser@gmail.com>
 Repository: CRAN
-Date/Publication: 2016-10-21 10:32:36
+Date/Publication: 2017-04-12 22:30:56 UTC

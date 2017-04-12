@@ -4,7 +4,7 @@
 \alias{make_aniso_loglik}
 \title{Constructor functions for local parameter estimation.}
 \usage{
-make_aniso_loglik(locations, cov.model, data, Xmat)
+make_aniso_loglik(locations, cov.model, data, Xmat, nugg2.var)
 }
 \arguments{
 \item{locations}{A matrix of locations.}
@@ -15,6 +15,8 @@ make_aniso_loglik(locations, cov.model, data, Xmat)
 calculation.}
 
 \item{Xmat}{The design matrix for the mean model.}
+
+\item{nugg2.var}{Fixed values for the variance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.

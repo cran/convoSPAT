@@ -4,7 +4,7 @@
 \alias{make_global_loglik1}
 \title{Constructor functions for global parameter estimation.}
 \usage{
-make_global_loglik1(data, Xmat, Dmat, Vmat)
+make_global_loglik1(data, Xmat, Corr, nugg2.var)
 }
 \arguments{
 \item{data}{A vector or matrix of data to use in the likelihood
@@ -12,11 +12,9 @@ calculation.}
 
 \item{Xmat}{The design matrix for the mean model.}
 
-\item{Dmat}{A diagonal matrix of eigenvalues for the covariance
-matrix.}
+\item{Corr}{The correlation matrix.}
 
-\item{Vmat}{An orthogonal matrix of eigenvectors for the covariance
-matrix.}
+\item{nugg2.var}{Fixed values for the variance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.

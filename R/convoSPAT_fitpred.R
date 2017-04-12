@@ -64,6 +64,15 @@
 #' @param lambda.w Scalar; tuning parameter for the weight function.
 #' Defaults to be the square of one-half of the minimum distance between
 #' mixture component locations.
+#' @param fixed.nugg2.var A vector of length N containing a station-specific
+#' fixed, known variance for a second nugget term (representing known
+#' measurement error). Defaults to zero.
+#' @param mean.model.df Optional data frame; refers to the variables used
+#' in \code{mean.model}. Important when using categorical variables in
+#' \code{mean.model}, as a subset of the full design matrix will likely
+#' be rank deficient. Specifying \code{mean.model.df} allows \code{NSconvo_fit}
+#' to calculate a design matrix specific to the points used to fit each
+#' local model.
 #' @param mc.kernels Optional specification of mixture component kernel
 #' matrices (based on expert opinion, etc.).
 #' @param fit.radius Scalar; specifies the fit radius or neighborhood size
@@ -72,7 +81,10 @@
 #' be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).
 #' @param ns.variance Logical; indicates if the process variance (sigmasq)
 #' should be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).
-#'
+#' @param ns.mean Logical; indicates if the mean coefficeints (beta)
+#' should be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).
+#' @param print.progress Logical; if \code{TRUE}, text indicating the progress
+#' of local model fitting in real time.
 #' @param local.pars.LB,local.pars.UB Optional vectors of lower and upper
 #' bounds, respectively, used by the \code{"L-BFGS-B"} method option in the
 #' \code{\link[stats]{optim}} function for the local parameter estimation.
@@ -120,12 +132,18 @@
 #' \item{kernel.ellipses}{\code{N.obs} x 2 x 2 array, containing the kernel
 #' matrices corresponding to each of the simulated values.}
 #' \item{data}{Observed data values.}
-#' \item{beta.GLS}{Vector of generalized least squares estimates of beta,
-#' the mean coefficients.}
+#' \item{beta.GLS}{Generalized least squares estimates of beta,
+#' the mean coefficients. For \code{ns.mean = FALSE}, this is a vector
+#' (containing the global mean coefficients); for \code{ns.mean = TRUE},
+#' this is a matrix (one column for each mixture component location).}
 #' \item{beta.cov}{Covariance matrix of the generalized least squares
-#' estimate of beta.}
+#' estimate of beta. For \code{ns.mean = FALSE}, this is a matrix
+#' (containing the covariance of theglobal mean coefficients); for
+#' \code{ns.mean = TRUE}, this is an array (one matrix for each mixture
+#' component location).}
 #' \item{Mean.coefs}{"Regression table" for the mean coefficient estimates,
-#' listing the estimate, standard error, and t-value.}
+#' listing the estimate, standard error, and t-value (for \code{ns.mean =
+#' FALSE} only).}
 #' \item{tausq.est}{Estimate of tausq (nugget variance), either scalar (when
 #' \code{ns.nugget = "FALSE"}) or a vector of length N (when
 #' \code{ns.nugget = "TRUE"}), which contains the estimated nugget variance
@@ -134,17 +152,23 @@
 #' (when \code{ns.variance = "FALSE"}) or a vector of length N (when
 #' \code{ns.variance = "TRUE"}), which contains the estimated process
 #' variance for each observation location.}
+#' \item{beta.est}{Estimate of beta (mean coefficients), either a vector
+#' (when \code{ns.mean = "FALSE"}) or a matrix with N rows (when
+#' \code{ns.mean = "TRUE"}), each row of which contains the estimated
+#' (smoothed) mean coefficients for each observation location.}
 #' \item{kappa.MLE}{Scalar maximum likelihood estimate for kappa (when
 #' applicable).}
 #' \item{Cov.mat}{Estimated covariance matrix (\code{N.obs} x \code{N.obs})
 #' using all relevant parameter estimates.}
-#' \item{Cov.mat.inv}{Inverse of \code{Cov.mat}, the estimated covariance
-#' matrix (\code{N.obs} x \code{N.obs}).}
+#' \item{Cov.mat.chol}{Cholesky of \code{Cov.mat} (i.e., \code{chol(Cov.mat)}),
+#' the estimated covariance matrix (\code{N.obs} x \code{N.obs}).}
 #' \item{cov.model}{String; the correlation model used for estimation.}
 #' \item{ns.nugget}{Logical, indicating if the nugget variance was estimated
 #' as spatially-varing (\code{TRUE}) or constant (\code{FALSE}).}
 #' \item{ns.variance}{Logical, indicating if the process variance was
 #' estimated as spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
+#' \item{fixed.nugg2.var}{Vector of length N with the fixed variance for
+#' the second (measurement error) nugget term (defaults to zero).}
 #' \item{coords}{N x 2 matrix of observation locations.}
 #' \item{global.loglik}{Scalar value of the maximized likelihood from the
 #' global optimization (if available).}
@@ -166,8 +190,10 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                          coords = geodata$coords, data = geodata$data,
                          cov.model = "exponential", mean.model = data ~ 1,
                          mc.locations = NULL, N.mc = NULL, lambda.w = NULL,
+                         fixed.nugg2.var = NULL, mean.model.df = NULL,
                          mc.kernels = NULL, fit.radius = NULL,
                          ns.nugget = FALSE, ns.variance = FALSE,
+                         ns.mean = FALSE, print.progress = TRUE,
                          local.pars.LB = NULL, local.pars.UB = NULL,
                          global.pars.LB = NULL, global.pars.UB = NULL,
                          local.ini.pars = NULL, global.ini.pars = NULL ){
@@ -178,14 +204,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   #===========================================================================
   if( is.null(geodata) == FALSE ){
     if( class(geodata) != "geodata" ){
-      cat("\nPlease use a geodata object for the 'geodata = ' input.\n")
+      stop("Please use a geodata object for the 'geodata = ' input.")
     }
     coords <- geodata$coords
     data <- geodata$data
   }
   if( is.null(sp.SPDF) == FALSE ){
     if( class(sp.SPDF) != "SpatialPointsDataFrame" ){
-      cat("\nPlease use a SpatialPointsDataFrame object for the 'sp.SPDF = ' input.\n")
+      stop("Please use a SpatialPointsDataFrame object for the 'sp.SPDF = ' input.")
     }
     geodata <- geoR::as.geodata( sp.SPDF )
     coords <- geodata$coords
@@ -201,8 +227,18 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   if( cov.model != "cauchy" & cov.model != "matern" & cov.model != "circular" &
         cov.model != "cubic" & cov.model != "gaussian" & cov.model != "exponential" &
         cov.model != "spherical" & cov.model != "wave" ){
-    cat("\nPlease specify a valid covariance model (cauchy, matern,\ncircular, cubic, gaussian,
-          exponential, spherical, or wave).\n")
+    stop("Please specify a valid covariance model (cauchy, matern,\ncircular, cubic, gaussian,
+          exponential, spherical, or wave).")
+  }
+
+  # Check that ns.mean = TRUE is only used where applicable
+  if( ns.mean == TRUE ){
+    if( ns.nugget == FALSE || ns.variance == FALSE ){
+      stop("Cannot use ns.mean = TRUE and either ns.nugget = FALSE or ns.variance = FALSE (currently unsupported).")
+    }
+    if( cov.model == "matern" || cov.model == "cauchy" ){
+      stop("Cannot use ns.mean = TRUE with cov.model = `matern` or `cauchy` (currently unsupported).")
+    }
   }
 
   #===========================================================================
@@ -238,23 +274,23 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   # Check the mixture component locations
   #===========================================================================
   check.mc.locs <- mc_N( coords, mc.locations, fit.radius )
-  cat("\n-------------------------------------------------------\n")
+  cat("\n-----------------------------------------------------------\n")
   cat(paste("Fitting the nonstationary model: ", K, " local models with\nlocal sample sizes ranging between ", min(check.mc.locs),
             " and ", max(check.mc.locs), ".", sep = "" ))
   if( ns.nugget == FALSE & ns.variance == FALSE ){
     cat("\nConstant nugget and constant variance.")
   }
   if( ns.nugget == FALSE & ns.variance == TRUE ){
-    cat("\nConstant nugget and spatially-varing variance.")
+    cat("\nConstant nugget and spatially-varying variance.")
   }
   if( ns.nugget == TRUE & ns.variance == FALSE ){
-    cat("\nSpatially-varing nugget and constant variance.")
+    cat("\nSpatially-varying nugget and constant variance.")
   }
   if( ns.nugget == TRUE & ns.variance == TRUE ){
-    cat("\nSpatially-varing nugget and spatially-varing variance.")
+    cat("\nSpatially-varying nugget and spatially-varying variance.")
   }
   if( min(check.mc.locs) < 5 ){cat("\nWARNING: at least one of the mc locations has too few data points.\n")}
-  cat("\n-------------------------------------------------------\n")
+  cat("\n-----------------------------------------------------------\n")
 
   #===========================================================================
   # Set the tuning parameter, if not specified
@@ -264,11 +300,25 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   }
 
   #===========================================================================
+  # Set the second nugget variance, if not specified
+  #===========================================================================
+  if( is.null(fixed.nugg2.var) == TRUE ){
+    fixed.nugg2.var <- rep(0,N)
+  }
+
+  #===========================================================================
   # Calculate the design matrix
   #===========================================================================
-  OLS.model <- lm( mean.model, x=TRUE )
-
-  Xmat <- matrix( unname( OLS.model$x ), nrow=N )
+  if( is.null(mean.model.df) == TRUE ){
+    OLS.model <- lm( mean.model, x=TRUE )
+    Xmat <- matrix( unname( OLS.model$x ), nrow=N )
+    beta.names <- colnames(OLS.model$x)
+  }
+  if( is.null(mean.model.df) == FALSE ){
+    OLS.model <- lm( mean.model, x=TRUE, data = mean.model.df )
+    Xmat <- matrix( unname( OLS.model$x ), nrow=N )
+    beta.names <- colnames(OLS.model$x)
+  }
 
   #===========================================================================
   # Specify lower, upper, and initial parameter values for optim()
@@ -385,38 +435,76 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   if( is.null(mc.kernels) == TRUE ){
 
     # Storage for the mixture component kernels
-    mc.kernels <- array(NA, dim=c(2,2,K))
-    MLEs.save <- matrix(NA,K,7)
+    mc.kernels <- array(NA, dim=c(2, 2, K))
+    MLEs.save <- matrix(NA, K, 7)
+    beta.GLS.save <- matrix(NA, K, ncol(Xmat))
+    beta.cov.save <- array(NA, dim = c(ncol(Xmat), ncol(Xmat), K))
+    beta.coefs.save <- list()
 
     # Estimate the kernel function for each mixture component location,
     # completely specified by the kernel covariance matrix
     for( k in 1:K ){
 
-      temp.locs <- coords[ abs(coords[,1]-mc.locations[k,1]) <= fit.radius
-                           & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ]
-      temp.dat <- data[(abs(coords[,1] - mc.locations[k,1]) <= fit.radius)
-                       & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ]
-      X.tem <- as.matrix(Xmat[ abs(coords[,1]-mc.locations[k,1]) <= fit.radius
-                               & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ])
 
-      # Isolate the data/locations to be used for calculating the local kernel
-      distances <- rep(NA,dim(temp.locs)[1])
+      if( is.null(mean.model.df) == TRUE ){
+        temp.locs <- coords[ abs(coords[,1]-mc.locations[k,1]) <= fit.radius
+                             & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ]
+        temp.dat <- data[(abs(coords[,1] - mc.locations[k,1]) <= fit.radius)
+                         & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ]
+        temp.n2.var <- fixed.nugg2.var[(abs(coords[,1] - mc.locations[k,1]) <= fit.radius)
+                                       & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius)]
+        X.tem <- as.matrix(Xmat[ abs(coords[,1]-mc.locations[k,1]) <= fit.radius
+                                 & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ])
 
-      for(i in 1:dim(temp.locs)[1]){
-        distances[i] <- sqrt(sum((temp.locs[i,] - mc.locations[k,])^2))
+        # Isolate the data/locations to be used for calculating the local kernel
+        distances <- rep(NA,dim(temp.locs)[1])
+
+        for(i in 1:dim(temp.locs)[1]){
+          distances[i] <- sqrt(sum((temp.locs[i,] - mc.locations[k,])^2))
+        }
+
+        temp.locations <- temp.locs[distances <= fit.radius,]
+        Xtemp <- X.tem[distances <= fit.radius,]
+        n.fit <- dim(temp.locations)[1]
+        temp.dat <- as.matrix( temp.dat, nrow=n.fit)
+        temp.data <- temp.dat[distances <= fit.radius,]
+        temp.data <- as.matrix(temp.data, nrow=n.fit)
+        temp.nugg2.var <- temp.n2.var[distances <= fit.radius]
+      }
+      if( is.null(mean.model.df) == FALSE ){
+
+        temp.locs <- coords[ abs(coords[,1]-mc.locations[k,1]) <= fit.radius
+                             & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ]
+        temp.dat <- data[(abs(coords[,1] - mc.locations[k,1]) <= fit.radius)
+                         & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ]
+        temp.n2.var <- fixed.nugg2.var[(abs(coords[,1] - mc.locations[k,1]) <= fit.radius)
+                                       & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius)]
+        temp.mmdf <- mean.model.df[ abs(coords[,1]-mc.locations[k,1]) <= fit.radius
+                                    & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius), ]
+
+        # Isolate the data/locations to be used for calculating the local kernel
+        distances <- rep(NA,dim(temp.locs)[1])
+
+        for(i in 1:dim(temp.locs)[1]){
+          distances[i] <- sqrt(sum((temp.locs[i,] - mc.locations[k,])^2))
+        }
+
+        temp.locations <- temp.locs[distances <= fit.radius,]
+        n.fit <- dim(temp.locations)[1]
+        temp.dat <- as.matrix( temp.dat, nrow=n.fit)
+        temp.data <- temp.dat[distances <= fit.radius,]
+        temp.data <- as.matrix(temp.data, nrow=n.fit)
+        temp.nugg2.var <- temp.n2.var[distances <= fit.radius]
+        temp.mmdf <- temp.mmdf[distances <= fit.radius,]
+        Xtemp <- matrix( unname( lm( mean.model, x=TRUE, data = temp.mmdf )$x ), nrow=n.fit )
       }
 
-      temp.locations <- temp.locs[distances <= fit.radius,]
-      Xtemp <- X.tem[distances <= fit.radius,]
-      n.fit <- dim(temp.locations)[1]
-      temp.dat <- as.matrix( temp.dat, nrow=n.fit)
-      temp.data <- temp.dat[distances <= fit.radius,]
-      temp.data <- as.matrix(temp.data, nrow=n.fit)
-
-      if(k == 1){
-        cat("Calculating the parameter set for:\n")
+      if( print.progress ){
+        if(k == 1){
+          cat("Calculating the parameter set for:\n")
+        }
+        cat("mixture component location ", k,", using ", n.fit," observations...\n", sep="")
       }
-      cat("mixture component location ", k,", using ", n.fit," observations...\n", sep="")
 
       # Covariance models with the kappa parameter
       if( cov.model == "matern" || cov.model == "cauchy" ){
@@ -426,7 +514,8 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
         anis.model.kappa <- make_aniso_loglik_kappa( locations = temp.locations,
                                                      cov.model = cov.model,
                                                      data = temp.data,
-                                                     Xmat = Xtemp )
+                                                     Xmat = Xtemp,
+                                                     nugg2.var = temp.nugg2.var )
 
         MLEs <- optim( c(lam1.init, lam2.init, pi/4, tausq.local.init,
                          sigmasq.local.init, kappa.local.init ),
@@ -435,14 +524,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                        lower=c( lam1.LB, lam2.LB, 0, tausq.local.LB, sigmasq.local.LB ),
                        upper=c( lam1.UB, lam2.UB, pi/2,
                                 tausq.local.UB, sigmasq.local.UB, kappa.local.UB ) )
-        if( MLEs$convergence != 0 ){
-          if( MLEs$convergence == 52 ){
-            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
-          }
-          else{
-            cat( paste("  There was an error with optim(): \n  ",
-                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+        if(print.progress){
+          if( MLEs$convergence != 0 ){
+            if( MLEs$convergence == 52 ){
+              cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                         MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+            }
+            else{
+              cat( paste("  There was an error with optim(): \n  ",
+                         MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+            }
           }
         }
         MLE.pars <- MLEs$par
@@ -455,7 +546,8 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
         anis.model <- make_aniso_loglik( locations = temp.locations,
                                          cov.model = cov.model,
                                          data = temp.data,
-                                         Xmat = Xtemp )
+                                         Xmat = Xtemp,
+                                         nugg2.var = temp.nugg2.var )
 
         MLEs <- optim( c( lam1.init, lam2.init, pi/4, tausq.local.init,
                           sigmasq.local.init ),
@@ -464,14 +556,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                        lower=c( lam1.LB, lam2.LB, 0, tausq.local.LB, sigmasq.local.LB ),
                        upper=c( lam1.UB, lam2.UB, pi/2,
                                 tausq.local.UB, sigmasq.local.UB ) )
-        if( MLEs$convergence != 0 ){
-          if( MLEs$convergence == 52 ){
-            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
-          }
-          else{
-            cat( paste("  There was an error with optim(): \n  ",
-                       MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+        if(print.progress){
+          if( MLEs$convergence != 0 ){
+            if( MLEs$convergence == 52 ){
+              cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                         MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+            }
+            else{
+              cat( paste("  There was an error with optim(): \n  ",
+                         MLEs$convergence, "  ", MLEs$message, "\n", sep = "") )
+            }
           }
         }
 
@@ -480,6 +574,24 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
       # Save the kernel matrix
       mc.kernels[,,k] <- kernel_cov( MLE.pars[1:3] )
+
+      # Calculate spatially-varying mean coefficients if needed
+      if( ns.mean ){
+        dist.k <- mahalanobis.dist( data.x = temp.locations, vc = mc.kernels[,,k] )
+        NS.cov.k <- MLE.pars[5]*cov.spatial(dist.k, cov.model = cov.model,
+                                      cov.pars = c(1,1), kappa = MLE.pars[6])
+        Data.cov.k <- NS.cov.k + diag(rep(MLE.pars[4],n.fit) + temp.nugg2.var)
+        Data.chol.k <- chol(Data.cov.k)
+        tX.Cinv.k <- t(backsolve(Data.chol.k, backsolve(Data.chol.k, Xtemp, transpose = TRUE)))
+        beta.cov.k <- chol2inv( chol( tX.Cinv.k%*%Xtemp) )/p
+        beta.GLS.k <- (p*beta.cov.k %*% tX.Cinv.k %*% temp.data)/p
+
+        beta.GLS.save[k,] <- beta.GLS.k
+        beta.cov.save[,,k] <- beta.cov.k
+        beta.coefs.save[[k]] <- data.frame( Estimate = beta.GLS.k,
+                                            Std.Error = sqrt(diag(beta.cov.k)),
+                                            t.val = beta.GLS.k/sqrt(diag(beta.cov.k)) )
+      }
 
       # Save all MLEs
       # Parameter order: n, lam1, lam2, eta, tausq, sigmasq, mu, kappa
@@ -498,8 +610,8 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   for(n in 1:N){for(k in 1:K){
     weights[n,k] <- exp(-sum((coords[n,] - mc.locations[k,])^2)/(2*lambda.w))
   }
-                # Normalize the weights
-                weights[n,] <- weights[n,]/sum(weights[n,])
+    # Normalize the weights
+    weights[n,] <- weights[n,]/sum(weights[n,])
   }
 
   #===========================================================================
@@ -514,7 +626,7 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
   #===============
   # If specified: calculate the spatially-varying nugget and variance
-  if( ns.nugget == TRUE   ){
+  if( ns.nugget == TRUE ){
     mc.nuggets <- as.numeric(MLEs.save$tausq)
     obs.nuggets <- rep(0,N)
     for(n in 1:N){
@@ -522,6 +634,7 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
         obs.nuggets[n] <- obs.nuggets[n] + weights[n,k]*mc.nuggets[k]
       }
     }
+    obs.nuggets <- obs.nuggets + fixed.nugg2.var
   }
 
   if( ns.variance == TRUE ){
@@ -530,6 +643,17 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
     for(n in 1:N){
       for(k in 1:K){
         obs.variance[n] <- obs.variance[n] + weights[n,k]*mc.variance[k]
+      }
+    }
+  }
+
+  if( ns.mean == TRUE ){
+    obs.beta <- matrix(0, N, ncol(Xmat))
+    for( t in 1:ncol(Xmat)){
+      for(n in 1:N){
+        for(k in 1:K){
+          obs.beta[n,t] <- obs.beta[n,t] + weights[n,k]*beta.GLS.save[k,t]
+        }
       }
     }
   }
@@ -585,17 +709,15 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
     #====================================
     # Global parameter estimation
-
     if( ns.nugget == FALSE & ns.variance == FALSE ){
-      cat("Calculating the variance parameter MLEs. \n")
 
-      Corr.decomp <- eigen(NS.corr)
-
-      Dmat <- diag(Corr.decomp$values)
-      Vmat <- Corr.decomp$vectors
+      if(print.progress){
+        cat("Calculating the variance parameter MLEs. \n")
+      }
 
       overall.lik1 <- make_global_loglik1( data = data, Xmat = Xmat,
-                                           Dmat = Dmat, Vmat = Vmat )
+                                           Corr = NS.corr,
+                                           nugg2.var = fixed.nugg2.var )
 
       overall.MLEs <- optim( c( tausq.global.init, sigmasq.global.init ),
                              overall.lik1,
@@ -603,14 +725,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                              lower=c( tausq.global.LB, sigmasq.global.LB ),
                              upper=c( tausq.global.UB, sigmasq.global.UB ) )
 
-      if( overall.MLEs$convergence != 0 ){
-        if( overall.MLEs$convergence == 52 ){
-          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
-        }
-        else{
-          cat( paste("  There was an error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+      if(print.progress){
+        if( overall.MLEs$convergence != 0 ){
+          if( overall.MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
         }
       }
 
@@ -619,14 +743,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
       global.lik <- overall.MLEs$value
 
-      ObsNuggMat <- diag(rep(tausq.MLE,N))
+      ObsNuggMat <- diag(rep(tausq.MLE,N) + fixed.nugg2.var)
       ObsCov <- sigmasq.MLE * NS.corr
 
       obs.variance <- rep(sigmasq.MLE, N)
     }
 
     if( ns.nugget == TRUE & ns.variance == FALSE ){
-      cat("Calculating the variance parameter MLEs. \n")
+      if(print.progress){
+        cat("Calculating the variance parameter MLEs. \n")
+      }
 
       overall.lik2 <- make_global_loglik2( data = data,
                                            Xmat = Xmat,
@@ -636,14 +762,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
       overall.MLEs <- optim( sigmasq.global.init, overall.lik2, method = "L-BFGS-B",
                              lower=c( sigmasq.global.LB ),
                              upper=c( sigmasq.global.UB ) )
-      if( overall.MLEs$convergence != 0 ){
-        if( overall.MLEs$convergence == 52 ){
-          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
-        }
-        else{
-          cat( paste("  There was an error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+      if(print.progress){
+        if( overall.MLEs$convergence != 0 ){
+          if( overall.MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
         }
       }
       sigmasq.MLE <- overall.MLEs$par[1]
@@ -657,31 +785,36 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
     }
 
     if( ns.nugget == FALSE & ns.variance == TRUE ){
-      cat("Calculating the variance parameter MLEs. \n")
+      if(print.progress){
+        cat("Calculating the variance parameter MLEs. \n")
+      }
 
       overall.lik3 <- make_global_loglik3( data = data,
                                            Xmat = Xmat,
                                            Corr = NS.corr,
-                                           obs.variance = obs.variance )
+                                           obs.variance = obs.variance,
+                                           nugg2.var = fixed.nugg2.var )
 
       overall.MLEs <- optim( tausq.global.init, overall.lik3, method = "L-BFGS-B",
                              lower=c( tausq.global.LB ),
                              upper=c( tausq.global.UB ) )
 
-      if( overall.MLEs$convergence != 0 ){
-        if( overall.MLEs$convergence == 52 ){
-          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
-        }
-        else{
-          cat( paste("  There was an error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+      if(print.progress){
+        if( overall.MLEs$convergence != 0 ){
+          if( overall.MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
         }
       }
       tausq.MLE <- overall.MLEs$par[1]
       global.lik <- overall.MLEs$value
 
-      ObsNuggMat <- diag(rep(tausq.MLE,N))
+      ObsNuggMat <- diag(rep(tausq.MLE,N) + fixed.nugg2.var)
       ObsCov <- diag(sqrt(obs.variance)) %*% NS.corr %*% diag(sqrt(obs.variance))
 
     }
@@ -744,26 +877,31 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
     # Global parameter estimation
 
     if( ns.nugget == FALSE & ns.variance == FALSE ){
-      cat("Calculating the variance and smoothness parameter MLEs. \n")
+      if(print.progress){
+        cat("Calculating the variance and smoothness parameter MLEs. \n")
+      }
 
       overall.lik1.kappa <- make_global_loglik1_kappa( data = data, Xmat = Xmat,
                                                        cov.model = cov.model,
                                                        Scalemat = Scale.mat,
-                                                       Distmat = Dist.mat )
+                                                       Distmat = Dist.mat,
+                                                       nugg2.var = fixed.nugg2.var )
 
       overall.MLEs <- optim(c( tausq.global.init, sigmasq.global.init, kappa.global.init ),
                             overall.lik1.kappa,
                             method = "L-BFGS-B",
                             lower=c( tausq.global.LB, sigmasq.global.LB, kappa.global.LB ),
                             upper=c( tausq.global.UB, sigmasq.global.UB, kappa.global.UB ) )
-      if( overall.MLEs$convergence != 0 ){
-        if( overall.MLEs$convergence == 52 ){
-          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
-        }
-        else{
-          cat( paste("  There was an error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+      if(print.progress){
+        if( overall.MLEs$convergence != 0 ){
+          if( overall.MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
         }
       }
       tausq.MLE <- overall.MLEs$par[1]
@@ -771,14 +909,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
       kappa.MLE <- overall.MLEs$par[3]
 
       global.lik <- overall.MLEs$value
-      ObsNuggMat <- diag(rep(tausq.MLE,N))
+      ObsNuggMat <- diag(rep(tausq.MLE,N) + fixed.nugg2.var)
       ObsCov <- sigmasq.MLE * Scale.mat * cov.spatial( Dist.mat, cov.model = cov.model,
                                                        cov.pars = c(1,1), kappa = kappa.MLE )
       obs.variance <- rep(sigmasq.MLE, N)
     }
 
     if( ns.nugget == TRUE & ns.variance == FALSE ){
-      cat("Calculating the variance and smoothness parameter MLEs. \n")
+      if(print.progress){
+        cat("Calculating the variance and smoothness parameter MLEs. \n")
+      }
 
       overall.lik2.kappa <- make_global_loglik2_kappa( data = data, Xmat = Xmat,
                                                        cov.model = cov.model,
@@ -791,14 +931,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                             method = "L-BFGS-B",
                             lower=c( sigmasq.global.LB, kappa.global.LB ),
                             upper=c( sigmasq.global.UB, kappa.global.UB ) )
-      if( overall.MLEs$convergence != 0 ){
-        if( overall.MLEs$convergence == 52 ){
-          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
-        }
-        else{
-          cat( paste("  There was an error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+      if(print.progress){
+        if( overall.MLEs$convergence != 0 ){
+          if( overall.MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
         }
       }
       sigmasq.MLE <- overall.MLEs$par[1]
@@ -814,41 +956,48 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
     }
 
     if( ns.nugget == FALSE & ns.variance == TRUE ){
-      cat("Calculating the variance and smoothness parameter MLEs. \n")
+      if(print.progress){
+        cat("Calculating the variance and smoothness parameter MLEs. \n")
+      }
 
       overall.lik3.kappa <- make_global_loglik3_kappa( data = data, Xmat = Xmat,
                                                        cov.model = cov.model,
                                                        Scalemat = Scale.mat,
                                                        Distmat = Dist.mat,
-                                                       obs.variance = obs.variance )
+                                                       obs.variance = obs.variance,
+                                                       nugg2.var = fixed.nugg2.var )
 
       overall.MLEs <- optim(c( tausq.global.init, kappa.global.init ),
                             overall.lik3.kappa,
                             method = "L-BFGS-B",
                             lower=c( tausq.global.LB, kappa.global.LB ),
                             upper=c( tausq.global.UB, kappa.global.UB ) )
-      if( overall.MLEs$convergence != 0 ){
-        if( overall.MLEs$convergence == 52 ){
-          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
-        }
-        else{
-          cat( paste("  There was an error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+      if(print.progress){
+        if( overall.MLEs$convergence != 0 ){
+          if( overall.MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
         }
       }
       tausq.MLE <- overall.MLEs$par[1]
       kappa.MLE <- overall.MLEs$par[2]
 
       global.lik <- overall.MLEs$value
-      ObsNuggMat <- diag(rep(tausq.MLE,N))
+      ObsNuggMat <- diag(rep(tausq.MLE,N) + fixed.nugg2.var)
       ObsCov <- diag(sqrt(obs.variance)) %*% (Scale.mat * cov.spatial( Dist.mat, cov.model = cov.model,
                                                                        cov.pars = c(1,1), kappa = kappa.MLE )) %*% diag(sqrt(obs.variance))
 
     }
 
     if( ns.nugget == TRUE & ns.variance == TRUE ){
-      cat("Calculating the smoothness parameter MLEs. \n")
+      if(print.progress){
+        cat("Calculating the smoothness parameter MLE. \n")
+      }
 
       overall.lik4.kappa <- make_global_loglik4_kappa( data = data, Xmat = Xmat,
                                                        cov.model = cov.model,
@@ -860,14 +1009,16 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
       overall.MLEs <- optim( kappa.global.init, overall.lik4.kappa, method = "L-BFGS-B",
                              lower=c( kappa.global.LB ),
                              upper=c( kappa.global.UB ) )
-      if( overall.MLEs$convergence != 0 ){
-        if( overall.MLEs$convergence == 52 ){
-          cat( paste("  There was a NON-FATAL error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
-        }
-        else{
-          cat( paste("  There was an error with optim(): \n  ",
-                     overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+      if(print.progress){
+        if( overall.MLEs$convergence != 0 ){
+          if( overall.MLEs$convergence == 52 ){
+            cat( paste("  There was a NON-FATAL error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
+          else{
+            cat( paste("  There was an error with optim(): \n  ",
+                       overall.MLEs$convergence, "  ", overall.MLEs$message, "\n", sep = "") )
+          }
         }
       }
 
@@ -887,18 +1038,27 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   # Calculate the GLS estimate of beta
   #===========================================================================
 
-  Data.Cov.inv <- solve(Data.Cov)
-  beta.cov <- chol2inv( chol(t(Xmat)%*%Data.Cov.inv%*%Xmat) )/p
-  beta.GLS <- (p*beta.cov %*% t(Xmat) %*% Data.Cov.inv %*% data %*% rep(1,p))/p
-  Mean.coefs <- data.frame( Estimate = beta.GLS,
-                            Std.Error = sqrt(diag(beta.cov)),
-                            t.val = beta.GLS/sqrt(diag(beta.cov)) )
+  # Data.Cov.inv <- solve(Data.Cov)
+  Data.Cov.chol <- chol(Data.Cov)
+  if( ns.mean == FALSE ){
+    tX.Cinv <- t(backsolve(Data.Cov.chol, backsolve(Data.Cov.chol, Xmat, transpose = TRUE)))
+    beta.cov <- chol2inv( chol( tX.Cinv%*%Xmat) )/p
+    beta.GLS <- (p*beta.cov %*% tX.Cinv %*% data)/p
+    Mean.coefs <- data.frame( Estimate = beta.GLS,
+                              Std.Error = sqrt(diag(beta.cov)),
+                              t.val = beta.GLS/sqrt(diag(beta.cov)) )
+  }
+  if( ns.mean == TRUE ){
+    beta.cov <- beta.cov.save
+    beta.GLS <- beta.GLS.save
+    Mean.coefs <- beta.coefs.save
+  }
 
   #===========================================================================
   # Output
   #===========================================================================
   if( ns.nugget == TRUE ){
-    tausq.out <- obs.nuggets
+    tausq.out <- obs.nuggets - fixed.nugg2.var # This is the variance of nugget1 only
   }
   if( ns.nugget == FALSE ){
     tausq.out <- tausq.MLE
@@ -911,6 +1071,14 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
     sigmasq.out <- sigmasq.MLE
   }
 
+  if( ns.mean == TRUE ){
+    beta.out <- obs.beta
+    names(beta.out) <- beta.names
+  }
+  if( ns.mean == FALSE ){
+    beta.out <- beta.GLS
+  }
+
   output <- list( mc.kernels = mc.kernels,
                   mc.locations = mc.locations,
                   MLEs.save = MLEs.save,
@@ -921,12 +1089,15 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
                   Mean.coefs = Mean.coefs,
                   tausq.est = tausq.out,
                   sigmasq.est = sigmasq.out,
+                  beta.est = beta.out,
                   kappa.MLE = kappa.MLE,
                   Cov.mat = Data.Cov,
-                  Cov.mat.inv = Data.Cov.inv,
+                  Cov.mat.chol = Data.Cov.chol,
                   cov.model = cov.model,
                   ns.nugget = ns.nugget,
                   ns.variance = ns.variance,
+                  ns.mean = ns.mean,
+                  fixed.nugg2.var = fixed.nugg2.var,
                   coords = coords,
                   global.loglik = global.lik,
                   Xmat = Xmat,
@@ -992,18 +1163,22 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
       kernel.ellipses <- object$kernel.ellipses
       ns.nugget <- object$ns.nugget
       ns.variance <- object$ns.variance
+      ns.mean <- object$ns.mean
       beta.MLE <- as.matrix(object$beta.GLS)
+      beta.est <- object$beta.est
       tausq.est <- object$tausq.est
       sigmasq.est <- object$sigmasq.est
       kappa.MLE <- object$kappa.MLE
       mc.MLEs <- object$MLEs.save
-      Cov.mat.inv <- object$Cov.mat.inv
+      Cov.mat.chol <- object$Cov.mat.chol
       data <- object$data
       N <- length(object$data)
       coords <- object$coords
       cov.model <- object$cov.model
       Xmat <- object$Xmat
       lambda.w <- object$lambda.w
+      fixed.nugg2.var <- object$fixed.nugg2.var
+
       if (is.null(pred.covariates) == TRUE) {
         Xpred <- rep(1, M)
       }
@@ -1018,14 +1193,12 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
           pred.weights[m, k] <- exp(-sum((pred.coords[m, ] -
                                             mc.locations[k, ])^2)/(2 * lambda.w))
         }
-        pred.weights[m, ] <- pred.weights[m, ]/sum(pred.weights[m,
-                                                                ])
+        pred.weights[m, ] <- pred.weights[m, ]/sum(pred.weights[m,])
       }
       pred.kernel.ellipses <- array(0, dim = c(2, 2, M))
       for (m in 1:M) {
         for (k in 1:K) {
-          pred.kernel.ellipses[, , m] <- pred.kernel.ellipses[,
-                                                              , m] + pred.weights[m, k] * mc.kernels[, , k]
+          pred.kernel.ellipses[, , m] <- pred.kernel.ellipses[,, m] + pred.weights[m, k] * mc.kernels[, , k]
         }
       }
       if (ns.nugget == TRUE) {
@@ -1056,6 +1229,18 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
         obs.variance <- rep(sigmasq.est, N)
         pred.variance <- rep(sigmasq.est, M)
       }
+
+      if( ns.mean == TRUE ){
+        pred.beta <- matrix(0, M, ncol(Xmat))
+        for( t in 1:ncol(Xmat)){
+          for(m in 1:M){
+            for(k in 1:K){
+              pred.beta[m,t] <- pred.beta[m,t] + pred.weights[m,k]*beta.MLE[k,t]
+            }
+          }
+        }
+      }
+
       cat("Calculating the cross-correlations. (This step can be time consuming, depending on the number of prediction locations.)")
       Scale.cross <- matrix(NA, M, N)
       Dist.cross <- matrix(NA, M, N)
@@ -1088,14 +1273,29 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
       NS.cross.corr <- Scale.cross * Unscl.cross
       CrossCov <- diag(sqrt(pred.variance)) %*% NS.cross.corr %*%
         diag(sqrt(obs.variance))
+
+      crscov.Cinv <- t(backsolve(Cov.mat.chol,
+                                 backsolve(Cov.mat.chol, t(CrossCov), transpose = TRUE)))
+
       pred.means <- matrix(NA, M, p)
-      for (i in 1:p) {
-        pred.means[, i] <- Xpred %*% beta.MLE + (CrossCov) %*%
-          Cov.mat.inv %*% (object$data[, i] - Xmat %*%
-                             beta.MLE)
+      if( ns.mean == FALSE ){
+        for (i in 1:p) {
+          pred.means[, i] <- Xpred %*% beta.MLE + crscov.Cinv %*% (object$data[, i] - Xmat %*% beta.MLE)
+        }
       }
-      pred.SDs <- sqrt((pred.variance + pred.nuggets) - diag((CrossCov) %*%
-                                                               Cov.mat.inv %*% t(CrossCov)))
+      if( ns.mean == TRUE ){
+        pred.Xbeta.hat <- rep(0,M)
+        obs.Xbeta.hat <- rep(0,N)
+        for( t in 1:ncol(Xmat) ){
+          pred.Xbeta.hat <- pred.Xbeta.hat + Xpred[,t]*pred.beta[,t]
+          obs.Xbeta.hat <- obs.Xbeta.hat + Xmat[,t]*beta.est[,t]
+        }
+        for (i in 1:p) {
+          pred.means[, i] <- pred.Xbeta.hat + crscov.Cinv %*% (object$data[, i] - obs.Xbeta.hat)
+        }
+      }
+
+      pred.SDs <- sqrt((pred.variance + pred.nuggets) - diag(crscov.Cinv %*% t(CrossCov)))
       output <- list(pred.means = pred.means, pred.SDs = pred.SDs)
       return(output)
     }
@@ -1142,7 +1342,9 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
 #' details, see documentation for \code{\link[geoR]{cov.spatial}}.
 #' @param mean.model An object of class \code{\link[stats]{formula}},
 #' specifying the mean model to be used. Defaults to an intercept only.
-#'
+#' @param fixed.nugg2.var Avector of length N containing a station-specific
+#' fixed, known variance for a second nugget term (representing known
+#' measurement error). Defaults to zero.
 #' @param local.pars.LB,local.pars.UB Optional vectors of lower and upper
 #' bounds, respectively, used by the \code{"L-BFGS-B"} method option in the
 #' \code{\link[stats]{optim}} function for the local parameter estimation.
@@ -1175,8 +1377,8 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
 #' listing the estimate, standard error, and t-value.}
 #' \item{Cov.mat}{Estimated covariance matrix (\code{N.obs} x \code{N.obs})
 #' using all relevant parameter estimates.}
-#' \item{Cov.mat.inv}{Inverse of \code{Cov.mat}, the estimated covariance
-#' matrix (\code{N.obs} x \code{N.obs}).}
+#' \item{Cov.mat.chol}{Cholesky of \code{Cov.mat} (i.e., \code{chol(Cov.mat)}),
+#' the estimated covariance matrix (\code{N.obs} x \code{N.obs}).}
 #' \item{aniso.pars}{Vector of MLEs for the anisotropy parameters lam1,
 #' lam2, eta.}
 #' \item{aniso.mat}{2 x 2 anisotropy matrix, calculated from
@@ -1187,6 +1389,8 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
 #' (process variance).}
 #' \item{kappa.MLE}{Scalar maximum likelihood estimate for kappa (when
 #' applicable).}
+#' \item{fixed.nugg2.var}{Vector of length N with the fixed variance for
+#' the second (measurement error) nugget term (defaults to zero).}
 #' \item{cov.model}{String; the correlation model used for estimation.}
 #' \item{coords}{N x 2 matrix of observation locations.}
 #' \item{global.loglik}{Scalar value of the maximized likelihood from the
@@ -1209,6 +1413,7 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
 Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
                        coords = geodata$coords, data = geodata$data,
                        cov.model = "exponential", mean.model = data ~ 1,
+                       fixed.nugg2.var = NULL,
                        local.pars.LB = NULL, local.pars.UB = NULL,
                        local.ini.pars = NULL ){
 
@@ -1248,6 +1453,13 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
   OLS.model <- lm( mean.model, x=TRUE )
 
   Xmat <- matrix( unname( OLS.model$x ), nrow=N )
+
+  #===========================================================================
+  # Set the second nugget variance, if not specified
+  #===========================================================================
+  if( is.null(fixed.nugg2.var) == TRUE ){
+    fixed.nugg2.var <- rep(0,N)
+  }
 
   #===========================================================================
   # Specify lower, upper, and initial parameter values for optim()
@@ -1343,7 +1555,8 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
     anis.model.kappa <- make_aniso_loglik_kappa( locations = coords,
                                                  cov.model = cov.model,
                                                  data = data,
-                                                 Xmat = Xmat )
+                                                 Xmat = Xmat,
+                                                 nugg2.var = fixed.nugg2.var )
 
     MLEs <- optim( c(lam1.init, lam2.init, pi/4, tausq.local.init,
                      sigmasq.local.init, kappa.local.init ),
@@ -1372,7 +1585,8 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
     anis.model <- make_aniso_loglik( locations = coords,
                                      cov.model = cov.model,
                                      data = data,
-                                     Xmat = Xmat )
+                                     Xmat = Xmat,
+                                     nugg2.var = fixed.nugg2.var )
 
     MLEs <- optim( c( lam1.init, lam2.init, pi/4, tausq.local.init,
                       sigmasq.local.init ),
@@ -1413,14 +1627,16 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
   distances <- mahalanobis.dist( data.x = coords, vc = aniso.mat )
   NS.cov <- MLE.pars[5] * cov.spatial( distances, cov.model = cov.model,
                                        cov.pars = c(1,1), kappa = MLE.pars[6] )
-  Data.Cov <- NS.cov + diag(rep(MLE.pars[4], N))
+  Data.Cov <- NS.cov + diag(rep(MLE.pars[4], N) + fixed.nugg2.var)
 
   #===========================================================================
   # Calculate the GLS estimate of beta
   #===========================================================================
-  Data.Cov.inv <- solve(Data.Cov)
-  beta.cov <- chol2inv( chol(t(Xmat)%*%Data.Cov.inv%*%Xmat) )/p
-  beta.GLS <- (p*beta.cov %*% t(Xmat) %*% Data.Cov.inv %*% data %*% rep(1,p))/p
+  Data.Cov.chol <- chol(Data.Cov)
+
+  tX.Cinv <- t(backsolve(Data.Cov.chol, backsolve(Data.Cov.chol, Xmat, transpose = TRUE)))
+  beta.cov <- chol2inv( chol( tX.Cinv%*%Xmat) )/p
+  beta.GLS <- (p*beta.cov %*% tX.Cinv %*% data)/p
   Mean.coefs <- data.frame( Estimate = beta.GLS,
                             Std.Error = sqrt(diag(beta.cov)),
                             t.val = beta.GLS/sqrt(diag(beta.cov)) )
@@ -1435,12 +1651,13 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
                   beta.cov = beta.cov,
                   Mean.coefs = Mean.coefs,
                   Cov.mat = Data.Cov,
-                  Cov.mat.inv = Data.Cov.inv,
+                  Cov.mat.chol = Data.Cov.chol,
                   aniso.pars =  MLE.pars[1:3],
                   aniso.mat = aniso.mat,
                   tausq.est = MLE.pars[4],
                   sigmasq.est = MLE.pars[5],
                   kappa.MLE = MLE.pars[6],
+                  fixed.nugg2.var = fixed.nugg2.var,
                   cov.model = cov.model,
                   coords = coords,
                   Xmat = Xmat,
@@ -1501,7 +1718,7 @@ predict.Aniso <- function(object, pred.coords, pred.covariates = NULL,
       tausq.est <- object$tausq.est
       sigmasq.est <- object$sigmasq.est
       kappa.MLE <- object$kappa.MLE
-      Cov.mat.inv <- object$Cov.mat.inv
+      Cov.mat.chol <- object$Cov.mat.chol
       data <- object$data
       N <- length(object$data)
       coords <- object$coords
@@ -1520,15 +1737,17 @@ predict.Aniso <- function(object, pred.coords, pred.covariates = NULL,
                                        vc = aniso.mat)
       CrossCov <- sigmasq.est * cov.spatial(CC.distances, cov.model = cov.model,
                                             cov.pars = c(1, 1), kappa = kappa.MLE)
+      crscov.Cinv <- t(backsolve(Cov.mat.chol,
+                                 backsolve(Cov.mat.chol, t(CrossCov), transpose = TRUE)))
+
       pred.means <- matrix(NA, M, p)
       for (i in 1:p) {
-        pred.means[, i] <- Xpred %*% beta.MLE + ((CrossCov) %*%
-                                                   Cov.mat.inv %*% (object$data[, i] - Xmat %*%
-                                                                      beta.MLE))
+        pred.means[, i] <- Xpred %*% beta.MLE + crscov.Cinv %*% (object$data[, i] - Xmat %*% beta.MLE)
       }
-      pred.SDs <- sqrt(rep(tausq.est + sigmasq.est, M) - diag((CrossCov) %*%
-                                                                Cov.mat.inv %*% t(CrossCov)))
+      pred.SDs <- sqrt(rep(tausq.est + sigmasq.est, M) - diag(crscov.Cinv %*% t(CrossCov)))
+
       output <- list(pred.means = pred.means, pred.SDs = pred.SDs)
-      return(output)    }
+      return(output)
+    }
   }
 }

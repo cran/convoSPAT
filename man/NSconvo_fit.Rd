@@ -6,10 +6,12 @@
 \usage{
 NSconvo_fit(geodata = NULL, sp.SPDF = NULL, coords = geodata$coords,
   data = geodata$data, cov.model = "exponential", mean.model = data ~ 1,
-  mc.locations = NULL, N.mc = NULL, lambda.w = NULL, mc.kernels = NULL,
+  mc.locations = NULL, N.mc = NULL, lambda.w = NULL,
+  fixed.nugg2.var = NULL, mean.model.df = NULL, mc.kernels = NULL,
   fit.radius = NULL, ns.nugget = FALSE, ns.variance = FALSE,
-  local.pars.LB = NULL, local.pars.UB = NULL, global.pars.LB = NULL,
-  global.pars.UB = NULL, local.ini.pars = NULL, global.ini.pars = NULL)
+  ns.mean = FALSE, print.progress = TRUE, local.pars.LB = NULL,
+  local.pars.UB = NULL, global.pars.LB = NULL, global.pars.UB = NULL,
+  local.ini.pars = NULL, global.ini.pars = NULL)
 }
 \arguments{
 \item{geodata}{A list containing elements \code{coords} and \code{data} as
@@ -52,6 +54,17 @@ spatial domain.}
 Defaults to be the square of one-half of the minimum distance between
 mixture component locations.}
 
+\item{fixed.nugg2.var}{A vector of length N containing a station-specific
+fixed, known variance for a second nugget term (representing known
+measurement error). Defaults to zero.}
+
+\item{mean.model.df}{Optional data frame; refers to the variables used
+in \code{mean.model}. Important when using categorical variables in
+\code{mean.model}, as a subset of the full design matrix will likely
+be rank deficient. Specifying \code{mean.model.df} allows \code{NSconvo_fit}
+to calculate a design matrix specific to the points used to fit each
+local model.}
+
 \item{mc.kernels}{Optional specification of mixture component kernel
 matrices (based on expert opinion, etc.).}
 
@@ -63,6 +76,12 @@ be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
 
 \item{ns.variance}{Logical; indicates if the process variance (sigmasq)
 should be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
+
+\item{ns.mean}{Logical; indicates if the mean coefficeints (beta)
+should be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
+
+\item{print.progress}{Logical; if \code{TRUE}, text indicating the progress
+of local model fitting in real time.}
 
 \item{local.pars.LB, local.pars.UB}{Optional vectors of lower and upper
 bounds, respectively, used by the \code{"L-BFGS-B"} method option in the
@@ -112,12 +131,18 @@ mixture component location.}
 \item{kernel.ellipses}{\code{N.obs} x 2 x 2 array, containing the kernel
 matrices corresponding to each of the simulated values.}
 \item{data}{Observed data values.}
-\item{beta.GLS}{Vector of generalized least squares estimates of beta,
-the mean coefficients.}
+\item{beta.GLS}{Generalized least squares estimates of beta,
+the mean coefficients. For \code{ns.mean = FALSE}, this is a vector
+(containing the global mean coefficients); for \code{ns.mean = TRUE},
+this is a matrix (one column for each mixture component location).}
 \item{beta.cov}{Covariance matrix of the generalized least squares
-estimate of beta.}
+estimate of beta. For \code{ns.mean = FALSE}, this is a matrix
+(containing the covariance of theglobal mean coefficients); for
+\code{ns.mean = TRUE}, this is an array (one matrix for each mixture
+component location).}
 \item{Mean.coefs}{"Regression table" for the mean coefficient estimates,
-listing the estimate, standard error, and t-value.}
+listing the estimate, standard error, and t-value (for \code{ns.mean =
+FALSE} only).}
 \item{tausq.est}{Estimate of tausq (nugget variance), either scalar (when
 \code{ns.nugget = "FALSE"}) or a vector of length N (when
 \code{ns.nugget = "TRUE"}), which contains the estimated nugget variance
@@ -126,17 +151,23 @@ for each observation location.}
 (when \code{ns.variance = "FALSE"}) or a vector of length N (when
 \code{ns.variance = "TRUE"}), which contains the estimated process
 variance for each observation location.}
+\item{beta.est}{Estimate of beta (mean coefficients), either a vector
+(when \code{ns.mean = "FALSE"}) or a matrix with N rows (when
+\code{ns.mean = "TRUE"}), each row of which contains the estimated
+(smoothed) mean coefficients for each observation location.}
 \item{kappa.MLE}{Scalar maximum likelihood estimate for kappa (when
 applicable).}
 \item{Cov.mat}{Estimated covariance matrix (\code{N.obs} x \code{N.obs})
 using all relevant parameter estimates.}
-\item{Cov.mat.inv}{Inverse of \code{Cov.mat}, the estimated covariance
-matrix (\code{N.obs} x \code{N.obs}).}
+\item{Cov.mat.chol}{Cholesky of \code{Cov.mat} (i.e., \code{chol(Cov.mat)}),
+the estimated covariance matrix (\code{N.obs} x \code{N.obs}).}
 \item{cov.model}{String; the correlation model used for estimation.}
 \item{ns.nugget}{Logical, indicating if the nugget variance was estimated
 as spatially-varing (\code{TRUE}) or constant (\code{FALSE}).}
 \item{ns.variance}{Logical, indicating if the process variance was
 estimated as spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
+\item{fixed.nugg2.var}{Vector of length N with the fixed variance for
+the second (measurement error) nugget term (defaults to zero).}
 \item{coords}{N x 2 matrix of observation locations.}
 \item{global.loglik}{Scalar value of the maximized likelihood from the
 global optimization (if available).}
