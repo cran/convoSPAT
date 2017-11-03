@@ -14,7 +14,7 @@ calculation.}
 
 \item{Corr}{The correlation matrix.}
 
-\item{nugg2.var}{Fixed values for the variance of the second nugget term.}
+\item{nugg2.var}{Fixed values for the covariance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.
@@ -27,7 +27,7 @@ matrix (smoothness is fixed).
 }
 \examples{
 \dontrun{
-make_global_loglik1( data, Xmat, Dmat, Vmat )
+make_global_loglik1( data, Xmat, Corr, nugg2.var )
 }
 
 }

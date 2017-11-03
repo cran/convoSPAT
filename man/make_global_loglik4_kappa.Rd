@@ -5,7 +5,7 @@
 \title{Constructor functions for global parameter estimation.}
 \usage{
 make_global_loglik4_kappa(data, Xmat, cov.model, Scalemat, Distmat,
-  obs.variance, obs.nuggets)
+  obs.variance, obs.nuggets, nugg2.var)
 }
 \arguments{
 \item{data}{A vector or matrix of data to use in the likelihood
@@ -25,6 +25,8 @@ corresponding to each data location.}
 
 \item{obs.nuggets}{A vector containing the spatially-varying nuggets
 corresponding to each data location.}
+
+\item{nugg2.var}{Fixed values for the covariance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.
@@ -37,7 +39,8 @@ and nugget variance are taken to be spatially-varying.
 }
 \examples{
 \dontrun{
-make_global_loglik4_kappa( data, Xmat, cov.model, Scalemat, Distmat, obs.variance, obs.nuggets )
+make_global_loglik4_kappa( data, Xmat, cov.model, Scalemat, Distmat,
+obs.variance, obs.nuggets, nugg2.var )
 }
 
 }

@@ -19,7 +19,7 @@ covariance function.}
 
 \item{Distmat}{Matrix; contains the scaled distances.}
 
-\item{nugg2.var}{Fixed values for the variance of the second nugget term.}
+\item{nugg2.var}{Fixed values for the covariance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.
@@ -31,7 +31,7 @@ global variance parameters tausq, sigmasq, and nu.
 }
 \examples{
 \dontrun{
-make_global_loglik1_kappa( data, Xmat, cov.model, Scalemat, Distmat )
+make_global_loglik1_kappa( data, Xmat, cov.model, Scalemat, Distmat, nugg2.var )
 }
 
 }

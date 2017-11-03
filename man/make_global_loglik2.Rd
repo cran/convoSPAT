@@ -4,7 +4,7 @@
 \alias{make_global_loglik2}
 \title{Constructor functions for global parameter estimation.}
 \usage{
-make_global_loglik2(data, Xmat, Corr, obs.nuggets)
+make_global_loglik2(data, Xmat, Corr, obs.nuggets, nugg2.var)
 }
 \arguments{
 \item{data}{A vector or matrix of data to use in the likelihood
@@ -16,6 +16,8 @@ calculation.}
 
 \item{obs.nuggets}{A vector containing the spatially-varying nuggets
 corresponding to each data location.}
+
+\item{nugg2.var}{Fixed values for the covariance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.
@@ -29,7 +31,7 @@ to be spatially-varing.
 }
 \examples{
 \dontrun{
-make_global_loglik2( data, Xmat, Corr, obs.nuggets )
+make_global_loglik2( data, Xmat, Corr, obs.nuggets, nugg2.var )
 }
 
 }

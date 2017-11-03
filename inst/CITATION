@@ -1,0 +1,18 @@
+bibentry(bibtype = "Article",
+  title        = "Local Likelihood Estimation for Covariance Functions with Spatially-Varying Parameters: The {convoSPAT} Package for {R}",
+  author       = c(person(given = c("Mark", "D."),
+                          family = "Risser",
+			  email = "markdrisser@gmail.com"),
+                   person(given = c("Catherine", "A."),
+                          family = "Calder",
+                          email = "calder@stat.osu.edu")),
+  journal      = "Journal of Statistical Software",
+  year         = "2017",
+  volume       = "81",
+  number       = "14",
+  pages        = "1--32",
+  doi          = "10.18637/jss.v081.i14",
+
+  header       = "To cite convoSPAT in publications use:"
+)
+

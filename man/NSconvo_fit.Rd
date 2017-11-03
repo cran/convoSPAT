@@ -9,9 +9,11 @@ NSconvo_fit(geodata = NULL, sp.SPDF = NULL, coords = geodata$coords,
   mc.locations = NULL, N.mc = NULL, lambda.w = NULL,
   fixed.nugg2.var = NULL, mean.model.df = NULL, mc.kernels = NULL,
   fit.radius = NULL, ns.nugget = FALSE, ns.variance = FALSE,
-  ns.mean = FALSE, print.progress = TRUE, local.pars.LB = NULL,
-  local.pars.UB = NULL, global.pars.LB = NULL, global.pars.UB = NULL,
-  local.ini.pars = NULL, global.ini.pars = NULL)
+  ns.mean = FALSE, local.aniso = TRUE, fix.tausq = FALSE, tausq = 0,
+  fix.kappa = FALSE, kappa = 0.5, method = "reml",
+  print.progress = TRUE, local.pars.LB = NULL, local.pars.UB = NULL,
+  global.pars.LB = NULL, global.pars.UB = NULL, local.ini.pars = NULL,
+  global.ini.pars = NULL)
 }
 \arguments{
 \item{geodata}{A list containing elements \code{coords} and \code{data} as
@@ -54,9 +56,11 @@ spatial domain.}
 Defaults to be the square of one-half of the minimum distance between
 mixture component locations.}
 
-\item{fixed.nugg2.var}{A vector of length N containing a station-specific
-fixed, known variance for a second nugget term (representing known
-measurement error). Defaults to zero.}
+\item{fixed.nugg2.var}{Optional; describes the variance/covariance for
+a fixed (second) nugget term (represents a known error term). Either
+a vector of length N containing a station-specific variances (implying
+independent error) or an NxN covariance matrix (implying dependent error).
+Defaults to zero.}
 
 \item{mean.model.df}{Optional data frame; refers to the variables used
 in \code{mean.model}. Important when using categorical variables in
@@ -79,6 +83,30 @@ should be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
 
 \item{ns.mean}{Logical; indicates if the mean coefficeints (beta)
 should be spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
+
+\item{local.aniso}{Logical; indicates if the local covariance should be
+anisotropic (\code{TRUE}) or isotropic (\code{FALSE}). Defaults to \code{TRUE}.
+In the case of a locally isotropic model, the bounds and initial values
+for lam will default to the first element of \code{local.pars.LB},
+\code{local.pars.UB}, and \code{local.ini.pars} (while still required, the
+second and third elements of these vectors will be ignored.)}
+
+\item{fix.tausq}{Logical; indicates whether the default nugget term
+(tau^2) should be fixed (\code{TRUE}) or estimated (\code{FALSE}). Defaults to
+\code{FALSE}.}
+
+\item{tausq}{Scalar; fixed value for the nugget variance (when
+\code{fix.tausq = TRUE}).}
+
+\item{fix.kappa}{Logical; indicates if the kappa parameter should be
+fixed (\code{TRUE}) or estimated (\code{FALSE}). Defaults to \code{FALSE}
+(only valid for \code{cov.model = "matern"} and \code{cov.model = "cauchy"}).}
+
+\item{kappa}{Scalar; value of the kappa parameter. Only used if
+\code{fix.kappa = TRUE}.}
+
+\item{method}{Indicates the estimation method, either maximum likelihood
+(\code{"ml"}) or restricted maximum likelihood (\code{"reml"}).}
 
 \item{print.progress}{Logical; if \code{TRUE}, text indicating the progress
 of local model fitting in real time.}
@@ -166,14 +194,18 @@ the estimated covariance matrix (\code{N.obs} x \code{N.obs}).}
 as spatially-varing (\code{TRUE}) or constant (\code{FALSE}).}
 \item{ns.variance}{Logical, indicating if the process variance was
 estimated as spatially-varying (\code{TRUE}) or constant (\code{FALSE}).}
-\item{fixed.nugg2.var}{Vector of length N with the fixed variance for
-the second (measurement error) nugget term (defaults to zero).}
+\item{fixed.nugg2.var}{N x N matrix with the fixed
+variance/covariance for the second (measurement error) nugget term (defaults
+to zero).}
 \item{coords}{N x 2 matrix of observation locations.}
 \item{global.loglik}{Scalar value of the maximized likelihood from the
 global optimization (if available).}
 \item{Xmat}{Design matrix, obtained from using \code{\link[stats]{lm}}
 with \code{mean.model}.}
 \item{lambda.w}{Tuning parameter for the weight function.}
+\item{fix.kappa}{Logical, indicating if kappa was fixed (\code{TRUE}) or
+estimated (\code{FALSE}).}
+\item{kappa}{Scalar; fixed value of kappa.}
 }
 \description{
 \code{NSconvo_fit} estimates the parameters of the nonstationary

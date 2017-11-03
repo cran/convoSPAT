@@ -5,7 +5,8 @@
 \title{Obtain predictions at unobserved locations for the nonstationary
 spatial model.}
 \usage{
-\method{predict}{NSconvo}(object, pred.coords, pred.covariates = NULL, ...)
+\method{predict}{NSconvo}(object, pred.coords, pred.covariates = NULL,
+  pred.fixed.nugg2.var = NULL, ...)
 }
 \arguments{
 \item{object}{A "NSconvo" object, from \code{NSconvo_fit}.}
@@ -16,6 +17,11 @@ spatial model.}
 NOT including an intercept. The number of columns for this matrix must
 match the design matrix from \code{mean.model} in \code{\link{NSconvo_fit}}.
 Defaults to an intercept only.}
+
+\item{pred.fixed.nugg2.var}{An optional vector or matrix describing the
+the variance/covariance a fixed second nugget term (corresponds to
+\code{fixed.nugg2.var} in \code{NSconvo_fit}; often useful if conducting
+prediction for held-out data). Defaults to zero.}
 
 \item{...}{additional arguments affecting the predictions produced.}
 }

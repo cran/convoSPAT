@@ -17,7 +17,7 @@ calculation.}
 \item{obs.variance}{A vector containing the spatially-varying variance
 corresponding to each data location.}
 
-\item{nugg2.var}{Fixed values for the variance of the second nugget term.}
+\item{nugg2.var}{Fixed values for the covariance of the second nugget term.}
 }
 \value{
 This function returns another function for use in \code{optim}.
@@ -31,7 +31,7 @@ to be spatially-varing.
 }
 \examples{
 \dontrun{
-make_global_loglik3( data, Xmat, Corr, obs.variance )
+make_global_loglik3( data, Xmat, Corr, obs.variance, nugg2.var )
 }
 
 }

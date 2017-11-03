@@ -31,13 +31,13 @@
 #' calculation.
 #' @param Xmat The design matrix for the mean model.
 #' @param Corr The correlation matrix.
-#' @param nugg2.var Fixed values for the variance of the second nugget term.
+#' @param nugg2.var Fixed values for the covariance of the second nugget term.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_global_loglik1( data, Xmat, Dmat, Vmat )
+#' make_global_loglik1( data, Xmat, Corr, nugg2.var )
 #' }
 #'
 #' @export
@@ -56,7 +56,7 @@ make_global_loglik1 <- function( data, Xmat, Corr, nugg2.var ){
     N <- dim(data)[1]
     p <- dim(data)[2]
 
-    Edecomp <- eigen(sigmasq*Corr + diag(rep(tausq,N) + nugg2.var))
+    Edecomp <- eigen(sigmasq*Corr + diag(rep(tausq,N)) + nugg2.var)
     Dmat.temp <- diag(Edecomp$values)
     Vmat.temp <- Edecomp$vectors
 
@@ -93,17 +93,18 @@ make_global_loglik1 <- function( data, Xmat, Corr, nugg2.var ){
 #' @param Corr The correlation matrix.
 #' @param obs.nuggets A vector containing the spatially-varying nuggets
 #' corresponding to each data location.
+#' @param nugg2.var Fixed values for the covariance of the second nugget term.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_global_loglik2( data, Xmat, Corr, obs.nuggets )
+#' make_global_loglik2( data, Xmat, Corr, obs.nuggets, nugg2.var )
 #' }
 #'
 #' @export
 
-make_global_loglik2 <- function( data, Xmat, Corr, obs.nuggets ){
+make_global_loglik2 <- function( data, Xmat, Corr, obs.nuggets, nugg2.var ){
 
   fixed <- c(FALSE)
   params <- fixed
@@ -116,7 +117,7 @@ make_global_loglik2 <- function( data, Xmat, Corr, obs.nuggets ){
     N <- dim(data)[1]
     p <- dim(data)[2]
 
-    Edecomp <- eigen(sigmasq*Corr + diag(obs.nuggets))
+    Edecomp <- eigen(sigmasq*Corr + diag(obs.nuggets) + nugg2.var)
     Dmat.temp <- diag(Edecomp$values)
     Vmat.temp <- Edecomp$vectors
 
@@ -154,13 +155,13 @@ make_global_loglik2 <- function( data, Xmat, Corr, obs.nuggets ){
 #' @param Corr The correlation matrix matrix.
 #' @param obs.variance A vector containing the spatially-varying variance
 #' corresponding to each data location.
-#' @param nugg2.var Fixed values for the variance of the second nugget term.
+#' @param nugg2.var Fixed values for the covariance of the second nugget term.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_global_loglik3( data, Xmat, Corr, obs.variance )
+#' make_global_loglik3( data, Xmat, Corr, obs.variance, nugg2.var )
 #' }
 #'
 #' @export
@@ -178,7 +179,7 @@ make_global_loglik3 <- function( data, Xmat, Corr, obs.variance, nugg2.var ){
     p <- dim(data)[2]
 
     Edecomp <- eigen(diag(sqrt(obs.variance)) %*% Corr %*% diag(sqrt(obs.variance))
-                     + diag(rep(tausq,N) + nugg2.var) )
+                     + diag(rep(tausq,N)) + nugg2.var )
     Dmat.temp <- diag(Edecomp$values)
     Vmat.temp <- Edecomp$vectors
 
@@ -218,13 +219,13 @@ make_global_loglik3 <- function( data, Xmat, Corr, obs.variance, nugg2.var ){
 #' @param Scalemat Matrix; contains the scaling quantities from the
 #' covariance function.
 #' @param Distmat Matrix; contains the scaled distances.
-#' @param nugg2.var Fixed values for the variance of the second nugget term.
+#' @param nugg2.var Fixed values for the covariance of the second nugget term.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_global_loglik1_kappa( data, Xmat, cov.model, Scalemat, Distmat )
+#' make_global_loglik1_kappa( data, Xmat, cov.model, Scalemat, Distmat, nugg2.var )
 #' }
 #'
 #' @export
@@ -249,7 +250,7 @@ make_global_loglik1_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     N <- dim(data)[1]
     p <- dim(data)[2]
 
-    Edecomp <- eigen(sigmasq*Corr + diag(rep(tausq,N) + nugg2.var))
+    Edecomp <- eigen(sigmasq*Corr + diag(rep(tausq,N)) + nugg2.var)
     Dmat.temp <- diag(Edecomp$values)
     Vmat.temp <- Edecomp$vectors
 
@@ -288,18 +289,19 @@ make_global_loglik1_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #' @param Distmat Matrix; contains the scaled distances.
 #' @param obs.nuggets A vector containing the spatially-varying nuggets
 #' corresponding to each data location.
+#' @param nugg2.var Fixed values for the covariance of the second nugget term.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_global_loglik2_kappa( data, Xmat, cov.model, Scalemat, Distmat, obs.nuggets )
+#' make_global_loglik2_kappa( data, Xmat, cov.model, Scalemat, Distmat, obs.nuggets, nugg2.var )
 #' }
 #'
 #' @export
 #' @importFrom geoR cov.spatial
 
-make_global_loglik2_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, obs.nuggets ){
+make_global_loglik2_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, obs.nuggets, nugg2.var ){
 
   fixed <- c(FALSE, FALSE)
   params <- fixed
@@ -317,7 +319,7 @@ make_global_loglik2_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     N <- dim(data)[1]
     p <- dim(data)[2]
 
-    Edecomp <- eigen(sigmasq * Corr + diag(obs.nuggets))
+    Edecomp <- eigen(sigmasq * Corr + diag(obs.nuggets) + nugg2.var)
     Dmat.temp <- diag(Edecomp$values)
     Vmat.temp <- Edecomp$vectors
 
@@ -355,13 +357,13 @@ make_global_loglik2_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #' @param Distmat Matrix; contains the scaled distances.
 #' @param obs.variance A vector containing the spatially-varying variance
 #' corresponding to each data location.
-#' @param nugg2.var Fixed values for the variance of the second nugget term.
+#' @param nugg2.var Fixed values for the covariance of the second nugget term.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_global_loglik3_kappa( data, Xmat, cov.model, Scalemat, Distmat, obs.variance )
+#' make_global_loglik3_kappa( data, Xmat, cov.model, Scalemat, Distmat, obs.variance, nugg2.var )
 #' }
 #'
 #' @export
@@ -386,7 +388,7 @@ make_global_loglik3_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     p <- dim(data)[2]
 
     Edecomp <- eigen(diag(sqrt(obs.variance)) %*% Corr %*% diag(sqrt(obs.variance))
-                     + diag(rep(tausq,N) + nugg2.var) )
+                     + diag(rep(tausq,N)) + nugg2.var )
     Dmat.temp <- diag(Edecomp$values)
     Vmat.temp <- Edecomp$vectors
 
@@ -427,18 +429,21 @@ make_global_loglik3_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #' corresponding to each data location.
 #' @param obs.nuggets A vector containing the spatially-varying nuggets
 #' corresponding to each data location.
+#' @param nugg2.var Fixed values for the covariance of the second nugget term.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_global_loglik4_kappa( data, Xmat, cov.model, Scalemat, Distmat, obs.variance, obs.nuggets )
+#' make_global_loglik4_kappa( data, Xmat, cov.model, Scalemat, Distmat,
+#' obs.variance, obs.nuggets, nugg2.var )
 #' }
 #'
 #' @export
 #' @importFrom geoR cov.spatial
 
-make_global_loglik4_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, obs.variance, obs.nuggets ){
+make_global_loglik4_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, obs.variance,
+                                       obs.nuggets, nugg2.var ){
 
   fixed <- c(FALSE)
   params <- fixed
@@ -455,7 +460,7 @@ make_global_loglik4_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     N <- dim(data)[1]
     p <- dim(data)[2]
 
-    Edecomp <- eigen(diag( sqrt(obs.variance) ) %*% Corr %*% diag( sqrt(obs.variance) ) + diag(obs.nuggets))
+    Edecomp <- eigen(diag( sqrt(obs.variance) ) %*% Corr %*% diag( sqrt(obs.variance) ) + diag(obs.nuggets) + nugg2.var)
     Dmat.temp <- diag(Edecomp$values)
     Vmat.temp <- Edecomp$vectors
 
@@ -478,178 +483,207 @@ make_global_loglik4_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #======================================================================================
 
 #======================================================================================
-# Function to calculate the locally anisotropic model
+# Function to estimate the local models
 #======================================================================================
 # Using a subset of the data, calculate MLEs of covariance and mean
-# parameters. Options for estimating models with and without kappa.
+# parameters. Options for
+# (1) method: ml vs. reml
+# (2) smoothness parameter: no kappa vs. estimate kappa vs. fixed kappa
+# (3) locally isotropic vs. locally anisotropic
+# (4) fixed tausq vs. estimate tausq
 #======================================================================================
 
-# Likelihood for Gaussian data with anisotropic covariance,
-# without kappa:
-
 #ROxygen comments ----
 #' Constructor functions for local parameter estimation.
 #'
 #' This function generates another function to be used within \code{optim} to
-#' obtain maximum likelihood estimates of
-#' local variance parameters lam1, lam2, eta, tausq, and sigmasq,
-#' assuming the smoothness is fixed, using a Gaussian likelihood with
-#' an anisotropic covariance structure.
+#' obtain maximum likelihood estimates of covariance (and possibly mean) parameters.
+#' The function includes options for
+#' (1) maximum likelihood (\code{"ml"}) vs. restricted maximum likelihood
+#'     (\code{"reml"}),
+#' (2) smoothness (\code{kappa}): models without smoothness vs. estimating the
+#'     smoothness vs. using fixed smoothness,
+#' (3) locally isotropic vs. locally anisotropic, and
+#' (4) fixed nugget variance (\code{tausq}): fixed vs. estimated.
 #'
 #' @param locations A matrix of locations.
 #' @param cov.model String; the covariance model.
 #' @param data A vector or matrix of data to use in the likelihood
 #' calculation.
 #' @param Xmat The design matrix for the mean model.
-#' @param nugg2.var Fixed values for the variance of the second nugget term.
+#' @param nugg2.var Fixed values for the variance/covariance of the second nugget term; defaults
+#' to a matrix of zeros.
+#' @param tausq Scalar; fixed value for the nugget variance (when
+#' \code{fix.tausq = TRUE}).
+#' @param kappa Scalar; fixed value for the smoothness (when \code{fix.kappa = TRUE}).
+#' @param fixed Logical vector of \code{FALSE} values; length corresponds to the number
+#' of parameters to be estimated.
+#' @param method Indicates the estimation method, either maximum likelihood (\code{"ml"})
+#' or restricted maximum likelihood (\code{"reml"}).
+#' @param local.aniso Logical; indicates if the local covariance should be
+#' anisotropic (\code{TRUE}) or isotropic (\code{FALSE}). Defaults to \code{TRUE}.
+#' @param fix.kappa Logical; indicates if the kappa parameter should be
+#' fixed (\code{TRUE}) or estimated (\code{FALSE}). Defaults to \code{FALSE}
+#' (only valid for \code{cov.model = "matern"} and \code{cov.model = "cauchy"}).
+#' @param fix.tausq Logical; indicates whether the default nugget term
+#' (tau^2) should be fixed (\code{TRUE}) or estimated (\code{FALSE}). Defaults to
+#' \code{FALSE}.
 #'
 #' @return This function returns another function for use in \code{optim}.
 #'
 #' @examples
 #' \dontrun{
-#' make_aniso_loglik( locations, cov.model, data, Xmat )
+#' make_local_lik( locations, cov.model, data, Xmat )
 #' }
 #'
 #' @export
 #' @importFrom geoR cov.spatial
 #' @importFrom StatMatch mahalanobis.dist
 
-make_aniso_loglik <- function( locations, cov.model, data, Xmat, nugg2.var ){
+make_local_lik <- function( locations, cov.model, data, Xmat,
+                            nugg2.var = matrix(0, nrow(locations), nrow(locations)),
+                            tausq = 0,
+                            kappa = 0.5, fixed = rep(FALSE, 6),
+                            method = "reml", local.aniso = TRUE,
+                            fix.tausq = FALSE, fix.kappa = FALSE ){
 
-  fixed <- c(FALSE, FALSE, FALSE, FALSE, FALSE)
   params <- fixed
-  function(p){
+
+  function(p) {
     params[!fixed] <- p
 
-    # Kernel parameters
-    lam1 <- params[1]
-    lam2 <- params[2]
-    eta <- params[3]
+    if( local.aniso ){ # Locally anisotropic
+      lam1 <- params[1]
+      lam2 <- params[2]
+      eta <- params[3]
 
-    # Nugget
-    tausq <- params[4]
+      if( cov.model == "matern" || cov.model == "cauchy" ){ # For covariance models with kappa
+        if( !fix.kappa ){ # Estimate kappa
+          if( !fix.tausq ){ # Estimate tausq
+            tausq <- params[4]
+            sigmasq <- params[5]
+            kappa <- params[6]
+            if( method == "ml" ) beta <- params[-c(1:6)]
+          }
+          if( fix.tausq ){ # Fix tausq
+            tausq <- tausq
+            sigmasq <- params[4]
+            kappa <- params[5]
+            if( method == "ml" ) beta <- params[-c(1:5)]
+          }
+        }
+        if( fix.kappa ){ # Fix kappa
+          if( !fix.tausq ){ # Estimate tausq
+            tausq <- params[4]
+            sigmasq <- params[5]
+            kappa <- kappa
+            if( method == "ml" ) beta <- params[-c(1:5)]
+          }
+          if( fix.tausq ){ # Fix tausq
+            tausq <- tausq
+            sigmasq <- params[4]
+            kappa <- kappa
+            if( method == "ml" ) beta <- params[-c(1:4)]
+          }
+        }
+      }
+      if( cov.model != "matern" & cov.model != "cauchy" ){ # For covariance models without kappa
+        if( !fix.tausq ){ # Estimate tausq
+          tausq <- params[4]
+          sigmasq <- params[5]
+          if( method == "ml" ) beta <- params[-c(1:5)]
+        }
+        if( fix.tausq ){ # Fix tausq
+          tausq <- tausq
+          sigmasq <- params[4]
+          if( method == "ml" ) beta <- params[-c(1:4)]
+        }
+      }
 
-    # Process variance
-    sigmasq <- params[5]
+    }
+    if( !local.aniso ){ # Locally isotropic
+      lam1 <- params[1]
+      lam2 <- params[1]
+      eta <- 0
 
-    # Smoothness
-    KAPPA <- NULL
+      if( cov.model == "matern" || cov.model == "cauchy" ){ # For covariance models with kappa
+        if( !fix.kappa ){ # Estimate kappa
+          if( !fix.tausq ){ # Estimate tausq
+            tausq <- params[2]
+            sigmasq <- params[3]
+            kappa <- params[4]
+            if( method == "ml" ) beta <- params[-c(1:4)]
+          }
+          if( fix.tausq ){ # Fix tausq
+            tausq <- tausq
+            sigmasq <- params[2]
+            kappa <- params[3]
+            if( method == "ml" ) beta <- params[-c(1:3)]
+          }
+        }
+        if( fix.kappa ){ # Fix kappa
+          if( !fix.tausq ){ # Estimate tausq
+            tausq <- params[2]
+            sigmasq <- params[3]
+            kappa <- kappa
+            if( method == "ml" ) beta <- params[-c(1:3)]
+          }
+          if( fix.tausq ){ # Fix tausq
+            tausq <- tausq
+            sigmasq <- params[2]
+            kappa <- kappa
+            if( method == "ml" ) beta <- params[-c(1:2)]
+          }
+        }
+      }
+      if( cov.model != "matern" & cov.model != "cauchy" ){ # For covariance models without kappa
+        if( !fix.tausq ){ # Estimate tausq
+          tausq <- params[2]
+          sigmasq <- params[3]
+          if( method == "ml" ) beta <- params[-c(1:3)]
+        }
+        if( fix.tausq ){ # Fix tausq
+          tausq <- tausq
+          sigmasq <- params[2]
+          if( method == "ml" ) beta <- params[-c(1:2)]
+        }
+      }
+    }
 
-    #================================
+    # Setup and covariance calculation
     N <- dim(locations)[1]
-    p <- dim(data)[2]
+    m <- dim(data)[2]
 
-    Pmat <- matrix(c(cos(eta),-sin(eta),sin(eta),cos(eta)),nrow=2,byrow=T)
-    Dmat <- diag(c(lam1,lam2))
-
+    Pmat <- matrix(c(cos(eta), -sin(eta), sin(eta), cos(eta)), nrow = 2, byrow = T)
+    Dmat <- diag(c(lam1, lam2))
     Sigma <- Pmat %*% Dmat %*% t(Pmat)
+    distances <- mahalanobis.dist(data.x = locations, vc = Sigma)
+    NS.cov <- nugg2.var + tausq * diag(N) + sigmasq * cov.spatial(distances, cov.model = cov.model,
+                                                                        cov.pars = c(1, 1), kappa = kappa)
+    cov.chol <- chol(NS.cov)
 
-    distances <- mahalanobis.dist( data.x = locations, vc = Sigma )
-    NS.cov <- sigmasq*cov.spatial(distances, cov.model = cov.model,
-                                  cov.pars = c(1,1), kappa = KAPPA)
+    # Likelihood calculation
+    if( method == "ml" ){
+      tmp1 <- backsolve(cov.chol, data - Xmat %*% beta, transpose = TRUE)
+      ResCinvRes <- t(tmp1) %*% tmp1
+      loglikelihood <- m * sum(log(diag(cov.chol))) + 0.5 * sum(diag(ResCinvRes))
+    }
+    if( method == "reml" ){
+      tmp1 <- backsolve(cov.chol, Xmat, transpose = TRUE)
+      XCinvX <- t(tmp1) %*% tmp1
+      xcx.chol <- chol(XCinvX)
+      tmp2 <- backsolve(cov.chol, data, transpose = TRUE)
+      ZCinvZ <- t(tmp2) %*% tmp2
+      XCinvZ <- t(Xmat) %*% backsolve(cov.chol, tmp2)
+      tmp3 <- backsolve(xcx.chol, XCinvZ, transpose = TRUE)
+      qf <- t(tmp3) %*% tmp3
+      loglikelihood <- m * sum(log(diag(cov.chol))) + m * sum(log(diag(xcx.chol))) + 0.5 * sum(diag(ZCinvZ)) - 0.5 * sum(diag(qf))
+    }
 
-    Edecomp <- eigen(NS.cov + diag(rep(tausq,N) + nugg2.var))
-    Dmat.temp <- diag(Edecomp$values)
-    Vmat.temp <- Edecomp$vectors
-
-    Cov.inv <- Vmat.temp %*% diag( 1/diag(Dmat.temp) ) %*% t(Vmat.temp)
-
-    XCX <- t(Xmat) %*% Cov.inv %*% Xmat
-    XCX.inv <- chol2inv( chol(XCX) )
-
-    Ptemp <- Cov.inv - Cov.inv %*% Xmat %*% XCX.inv %*% t(Xmat) %*% Cov.inv
-
-    # Default is to minimize -- want the maximum. Calculate the neg loglikelihood.
-    loglikelihood <- 0.5*( p*sum(log(diag(Dmat.temp))) + p*log(det(XCX)) + sum(diag(t(data)%*%Ptemp%*%data)) )
-
-    if(abs(loglikelihood) == Inf){ loglikelihood <- 1000000 }
-
+    if (abs(loglikelihood) == Inf) { loglikelihood <- 1e+06 } # Make sure not Inf
     return(loglikelihood)
-
   }
+
 }
 
-
-# with kappa:
-#ROxygen comments ----
-#' Constructor functions for local parameter estimation.
-#'
-#' This function generates another function to be used within \code{optim} to
-#' obtain maximum likelihood estimates of
-#' local variance parameters lam1, lam2, eta, tausq, sigmasq, and
-#' nu (smoothness) using a Gaussian likelihood with
-#' an anisotropic covariance structure.
-#'
-#' @param locations A matrix of locations.
-#' @param cov.model String; the covariance model.
-#' @param data A vector or matrix of data to use in the likelihood
-#' calculation.
-#' @param Xmat The design matrix for the mean model.
-#' @param nugg2.var Fixed values for the variance of the second nugget term.
-#'
-#' @return This function returns another function for use in \code{optim}.
-#'
-#' @examples
-#' \dontrun{
-#' make_aniso_loglik_kappa( locations, cov.model, data, Xmat )
-#' }
-#'
-#' @export
-#' @importFrom geoR cov.spatial
-#' @importFrom StatMatch mahalanobis.dist
-
-make_aniso_loglik_kappa <- function( locations, cov.model, data, Xmat, nugg2.var ){
-
-  fixed <- c(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE)
-  params <- fixed
-  function(p){
-    params[!fixed] <- p
-
-    # Kernel parameters
-    lam1 <- params[1]
-    lam2 <- params[2]
-    eta <- params[3]
-
-    # Nugget
-    tausq <- params[4]
-
-    # Process variance
-    sigmasq <- params[5]
-
-    # Smoothness
-    KAPPA <- params[6]
-
-    #================================
-    N <- dim(locations)[1]
-    p <- dim(data)[2]
-
-    Pmat <- matrix(c(cos(eta),-sin(eta),sin(eta),cos(eta)),nrow=2,byrow=T)
-    Dmat <- diag(c(lam1,lam2))
-
-    Sigma <- Pmat %*% Dmat %*% t(Pmat)
-
-    distances <- mahalanobis.dist( data.x = locations, vc = Sigma )
-    NS.cov <- sigmasq*cov.spatial(distances, cov.model = cov.model,
-                                  cov.pars = c(1,1), kappa = KAPPA)
-
-    Edecomp <- eigen(NS.cov + diag(rep(tausq,N) + nugg2.var))
-    Dmat.temp <- diag(Edecomp$values)
-    Vmat.temp <- Edecomp$vectors
-
-    Cov.inv <- Vmat.temp %*% diag( 1/diag(Dmat.temp) ) %*% t(Vmat.temp)
-
-    XCX <- t(Xmat) %*% Cov.inv %*% Xmat
-    XCX.inv <- chol2inv( chol(XCX) )
-
-    Ptemp <- Cov.inv - Cov.inv %*% Xmat %*% XCX.inv %*% t(Xmat) %*% Cov.inv
-
-    # Default is to minimize -- want the maximum. Calculate the neg loglikelihood.
-    loglikelihood <- 0.5*( p*sum(log(diag(Dmat.temp))) + p*log(det(XCX)) + sum(diag(t(data)%*%Ptemp%*%data)) )
-
-    if(abs(loglikelihood) == Inf){ loglikelihood <- 1000000 }
-
-    return(loglikelihood)
-
-  }
-}
 
