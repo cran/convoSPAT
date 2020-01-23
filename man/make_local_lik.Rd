@@ -64,4 +64,3 @@ make_local_lik( locations, cov.model, data, Xmat )
 }
 
 }
-

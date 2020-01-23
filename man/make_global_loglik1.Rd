@@ -31,4 +31,3 @@ make_global_loglik1( data, Xmat, Corr, nugg2.var )
 }
 
 }
-

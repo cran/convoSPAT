@@ -4,10 +4,11 @@
 \alias{NSconvo_sim}
 \title{Simulate data from the nonstationary model.}
 \usage{
-NSconvo_sim(grid = TRUE, y.min = 0, y.max = 5, x.min = 0, x.max = 5,
-  N.obs = 20^2, sim.locations = NULL, mc.kernels.obj = NULL,
-  mc.kernels = NULL, mc.locations = NULL, lambda.w = NULL, tausq = 0.1,
-  sigmasq = 1, beta.coefs = 4, kappa = NULL, covariates = rep(1, N.obs),
+NSconvo_sim(grid = TRUE, y.min = 0, y.max = 5, x.min = 0,
+  x.max = 5, N.obs = 20^2, sim.locations = NULL,
+  mc.kernels.obj = NULL, mc.kernels = NULL, mc.locations = NULL,
+  lambda.w = NULL, tausq = 0.1, sigmasq = 1, beta.coefs = 4,
+  kappa = NULL, covariates = rep(1, N.obs),
   cov.model = "exponential")
 }
 \arguments{
@@ -48,11 +49,10 @@ match the number of columns in \code{covariates}.}
 \item{covariates}{Matrix with \code{N.obs} rows, corresponding to
 covariate information for each of the simualted values.}
 
-\item{cov.model}{A string specifying the correlation function. Options
-available in this package are: "\code{exponential}", \code{"cauchy"},
-\code{"matern"}, \code{"circular"}, \code{"cubic"}, \code{"gaussian"},
-\code{"spherical"}, and \code{"wave"}. See \code{\link[geoR]{cov.spatial}}
-for further documentation.}
+\item{cov.model}{A string specifying the model for the correlation
+function; defaults to \code{"exponential"}.
+Options available in this package are: "\code{exponential}",
+\code{"matern"}, and \code{"gaussian"}.}
 }
 \value{
 A list with the following components:
@@ -85,4 +85,3 @@ covariates = rep(1,N.obs), cov.model = "exponential" )
 }
 
 }
-

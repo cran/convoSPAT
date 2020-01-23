@@ -24,4 +24,3 @@ summary.Aniso( Aniso.object )
 }
 
 }
-

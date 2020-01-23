@@ -30,4 +30,3 @@ A data set containing the necessary components to fit the nonstationary
 spatial model, simulated from the true model.
 }
 \keyword{datasets}
-

@@ -16,6 +16,53 @@
 #======================================================================================
 
 #===================================
+# Calculate spatial covariance
+
+#ROxygen comments ----
+#' Calculate spatial covariance.
+#'
+#' This function replaces the geoR function \code{cov.spatial}, which
+#' is now defunct.
+#' Options available in this package are: "\code{exponential}",
+#' \code{"matern"}, and \code{"gaussian"}.
+#'
+#' @param Dist.mat A matrix of scaled distances.
+#' @param cov.model A string specifying the model for the correlation
+#' function; defaults to \code{"exponential"}.
+#' Options available in this package are: "\code{exponential}",
+#' \code{"matern"}, and \code{"gaussian"}.
+#' @param cov.pars Fixed values; not used in the function.
+#' @param kappa Scalar; value of the smoothness parameter.
+#'
+#' @return This function returns a correlation matrix.
+#'
+#' @examples
+#' Distmat <- as.matrix(dist(matrix(runif(20), ncol = 2), diag = TRUE, upper = TRUE))
+#' C <- cov_spatial( Dist.mat = Distmat )
+#'
+#' @export
+
+cov_spatial <- function( Dist.mat, cov.model = "exponential", cov.pars = c(1,1), kappa = 0.5 ){
+  # Make sure cov.model is one of the permissible options
+  if( cov.model != "matern" & cov.model != "gaussian" & cov.model != "exponential" ){
+    stop("Please specify a valid covariance model (matern, gaussian, or exponential).")
+  }
+  if(cov.model == "exponential"){
+    C <- exp(-Dist.mat)
+  }
+  if( cov.model == "matern"){
+    C <- (exp(lgamma(kappa)) * 2^(kappa - 1))^(-1) * Dist.mat^kappa * besselK(Dist.mat, kappa)
+    C[is.na(C)] <- 1
+  }
+  if( cov.model == "gaussian"){
+    C <- exp(-(Dist.mat^2))
+  }
+  return(C)
+}
+
+
+
+#===================================
 # First, models without kappa
 # Estimates: nugget, variance
 
@@ -229,7 +276,6 @@ make_global_loglik3 <- function( data, Xmat, Corr, obs.variance, nugg2.var ){
 #' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 
 make_global_loglik1_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, nugg2.var ){
 
@@ -243,7 +289,7 @@ make_global_loglik1_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     sigmasq <- params[2]
     kapp <- params[3]
 
-    Unscl.corr <- cov.spatial( Distmat, cov.model = cov.model,
+    Unscl.corr <- cov_spatial( Distmat, cov.model = cov.model,
                                cov.pars = c(1,1), kappa = kapp )
     Corr <- Scalemat*Unscl.corr
 
@@ -299,7 +345,6 @@ make_global_loglik1_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 
 make_global_loglik2_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, obs.nuggets, nugg2.var ){
 
@@ -312,7 +357,7 @@ make_global_loglik2_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     sigmasq <- params[1]
     kapp <- params[2]
 
-    Unscl.corr <- cov.spatial( Distmat, cov.model = cov.model,
+    Unscl.corr <- cov_spatial( Distmat, cov.model = cov.model,
                                cov.pars = c(1,1), kappa = kapp )
     Corr <- Scalemat*Unscl.corr
 
@@ -367,7 +412,6 @@ make_global_loglik2_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 
 make_global_loglik3_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, obs.variance, nugg2.var ){
 
@@ -380,7 +424,7 @@ make_global_loglik3_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     tausq <- params[1]
     kapp <- params[2]
 
-    Unscl.corr <- cov.spatial( Distmat, cov.model = cov.model,
+    Unscl.corr <- cov_spatial( Distmat, cov.model = cov.model,
                                cov.pars = c(1,1), kappa = kapp )
     Corr <- Scalemat*Unscl.corr
 
@@ -440,7 +484,6 @@ make_global_loglik3_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 
 make_global_loglik4_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat, obs.variance,
                                        obs.nuggets, nugg2.var ){
@@ -453,7 +496,7 @@ make_global_loglik4_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
     # Parameters
     kapp <- params[1]
 
-    Unscl.corr <- cov.spatial( Distmat, cov.model = cov.model,
+    Unscl.corr <- cov_spatial( Distmat, cov.model = cov.model,
                                cov.pars = c(1,1), kappa = kapp )
     Corr <- Scalemat*Unscl.corr
 
@@ -537,7 +580,6 @@ make_global_loglik4_kappa <- function( data, Xmat, cov.model, Scalemat, Distmat,
 #' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 #' @importFrom StatMatch mahalanobis.dist
 
 make_local_lik <- function( locations, cov.model, data, Xmat,
@@ -658,28 +700,35 @@ make_local_lik <- function( locations, cov.model, data, Xmat,
     Dmat <- diag(c(lam1, lam2))
     Sigma <- Pmat %*% Dmat %*% t(Pmat)
     distances <- mahalanobis.dist(data.x = locations, vc = Sigma)
-    NS.cov <- nugg2.var + tausq * diag(N) + sigmasq * cov.spatial(distances, cov.model = cov.model,
+    NS.cov <- nugg2.var + tausq * diag(N) + sigmasq * cov_spatial(distances, cov.model = cov.model,
                                                                         cov.pars = c(1, 1), kappa = kappa)
-    cov.chol <- chol(NS.cov)
 
-    # Likelihood calculation
-    if( method == "ml" ){
-      tmp1 <- backsolve(cov.chol, data - Xmat %*% beta, transpose = TRUE)
-      ResCinvRes <- t(tmp1) %*% tmp1
-      loglikelihood <- m * sum(log(diag(cov.chol))) + 0.5 * sum(diag(ResCinvRes))
+    possibleError <- tryCatch(
+      cov.chol <- chol(NS.cov),
+      error=function(e) e
+    )
+    # Check for error before calculating the likelihood
+    if(inherits(possibleError, "error")){
+      loglikelihood <- 1e+06
+    } else{
+      # Likelihood calculation
+      if( method == "ml" ){
+        tmp1 <- backsolve(cov.chol, data - Xmat %*% beta, transpose = TRUE)
+        ResCinvRes <- t(tmp1) %*% tmp1
+        loglikelihood <- m * sum(log(diag(cov.chol))) + 0.5 * sum(diag(ResCinvRes))
+      }
+      if( method == "reml" ){
+        tmp1 <- backsolve(cov.chol, Xmat, transpose = TRUE)
+        XCinvX <- t(tmp1) %*% tmp1
+        xcx.chol <- chol(XCinvX)
+        tmp2 <- backsolve(cov.chol, data, transpose = TRUE)
+        ZCinvZ <- t(tmp2) %*% tmp2
+        XCinvZ <- t(Xmat) %*% backsolve(cov.chol, tmp2)
+        tmp3 <- backsolve(xcx.chol, XCinvZ, transpose = TRUE)
+        qf <- t(tmp3) %*% tmp3
+        loglikelihood <- m * sum(log(diag(cov.chol))) + m * sum(log(diag(xcx.chol))) + 0.5 * sum(diag(ZCinvZ)) - 0.5 * sum(diag(qf))
+      }
     }
-    if( method == "reml" ){
-      tmp1 <- backsolve(cov.chol, Xmat, transpose = TRUE)
-      XCinvX <- t(tmp1) %*% tmp1
-      xcx.chol <- chol(XCinvX)
-      tmp2 <- backsolve(cov.chol, data, transpose = TRUE)
-      ZCinvZ <- t(tmp2) %*% tmp2
-      XCinvZ <- t(Xmat) %*% backsolve(cov.chol, tmp2)
-      tmp3 <- backsolve(xcx.chol, XCinvZ, transpose = TRUE)
-      qf <- t(tmp3) %*% tmp3
-      loglikelihood <- m * sum(log(diag(cov.chol))) + m * sum(log(diag(xcx.chol))) + 0.5 * sum(diag(ZCinvZ)) - 0.5 * sum(diag(qf))
-    }
-
     if (abs(loglikelihood) == Inf) { loglikelihood <- 1e+06 } # Make sure not Inf
     return(loglikelihood)
   }

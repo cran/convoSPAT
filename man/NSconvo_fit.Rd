@@ -4,31 +4,24 @@
 \alias{NSconvo_fit}
 \title{Fit the nonstationary spatial model}
 \usage{
-NSconvo_fit(geodata = NULL, sp.SPDF = NULL, coords = geodata$coords,
-  data = geodata$data, cov.model = "exponential", mean.model = data ~ 1,
+NSconvo_fit(sp.SPDF = NULL, coords = NULL, data = NULL,
+  cov.model = "exponential", mean.model = data ~ 1,
   mc.locations = NULL, N.mc = NULL, lambda.w = NULL,
   fixed.nugg2.var = NULL, mean.model.df = NULL, mc.kernels = NULL,
   fit.radius = NULL, ns.nugget = FALSE, ns.variance = FALSE,
-  ns.mean = FALSE, local.aniso = TRUE, fix.tausq = FALSE, tausq = 0,
-  fix.kappa = FALSE, kappa = 0.5, method = "reml",
+  ns.mean = FALSE, local.aniso = TRUE, fix.tausq = FALSE,
+  tausq = 0, fix.kappa = FALSE, kappa = 0.5, method = "reml",
   print.progress = TRUE, local.pars.LB = NULL, local.pars.UB = NULL,
-  global.pars.LB = NULL, global.pars.UB = NULL, local.ini.pars = NULL,
-  global.ini.pars = NULL)
+  global.pars.LB = NULL, global.pars.UB = NULL,
+  local.ini.pars = NULL, global.ini.pars = NULL)
 }
 \arguments{
-\item{geodata}{A list containing elements \code{coords} and \code{data} as
-described next. Typically an object of the class "\code{geodata}", although
-a geodata object only allows \code{data} to be a vector (no replicates).
-If not provided, the arguments \code{coords} and \code{data} must be
-provided instead.}
-
 \item{sp.SPDF}{A "\code{SpatialPointsDataFrame}" object, which contains the
 spatial coordinates and additional attribute variables corresponding to the
 spatoal coordinates}
 
 \item{coords}{An N x 2 matrix where each row has the two-dimensional
-coordinates of the N data locations. By default, it takes the \code{coords}
-component of the argument \code{geodata}, if provided.}
+coordinates of the N data locations.}
 
 \item{data}{A vector or matrix with N rows, containing the data values.
 Inputting a vector corresponds to a single replicate of data, while
@@ -37,11 +30,9 @@ the model assumes the replicates are independent and identically
 distributed.}
 
 \item{cov.model}{A string specifying the model for the correlation
-function; following \code{geoR}, defaults to \code{"exponential"}.
+function; defaults to \code{"exponential"}.
 Options available in this package are: "\code{exponential}",
-\code{"cauchy"}, \code{"matern"}, \code{"circular"}, \code{"cubic"},
-\code{"gaussian"}, \code{"spherical"}, and \code{"wave"}. For further
-details, see documentation for \code{\link[geoR]{cov.spatial}}.}
+\code{"matern"}, and \code{"gaussian"}.}
 
 \item{mean.model}{An object of class \code{\link[stats]{formula}},
 specifying the mean model to be used. Defaults to an intercept only.}
@@ -210,16 +201,16 @@ estimated (\code{FALSE}).}
 \description{
 \code{NSconvo_fit} estimates the parameters of the nonstationary
 convolution-based spatial model. Required inputs are the observed data and
-locations (a geoR object with $coords and $data).
-Optional inputs include mixture component locations (if not provided,
+locations. Optional inputs include mixture component locations (if not provided,
 the number of mixture component locations are required), the fit radius,
 the covariance model (exponential is the default), and whether or not the
 nugget and process variance will be spatially-varying.
 }
 \examples{
+\dontrun{
 # Using white noise data
 fit.model <- NSconvo_fit( coords = cbind( runif(100), runif(100)),
 data = rnorm(100), fit.radius = 0.4, N.mc = 4 )
-
 }
 
+}

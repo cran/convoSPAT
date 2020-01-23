@@ -24,4 +24,3 @@ summary.NSconvo( NSconvo.object )
 }
 
 }
-

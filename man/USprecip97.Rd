@@ -25,4 +25,3 @@ A data set containing the annual precipitation for 1270 locations
 in the western United States.
 }
 \keyword{datasets}
-

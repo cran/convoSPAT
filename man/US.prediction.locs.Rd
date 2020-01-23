@@ -18,4 +18,3 @@ A matrix with two columns containing a fine grid of locations for
 which to make a filled-in prediction map for the western United States.
 }
 \keyword{datasets}
-

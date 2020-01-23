@@ -13,7 +13,7 @@
 #======================================================================================
 # The NSconvo.fit() function estimates the parameters of the nonstationary
 # convolution-based spatial model. Required inputs are the observed data and
-# locations (a geoR object with $coords and $data).
+# locations.
 # Optional inputs include mixture component locations (if not provided, the number of mixture component
 # locations are required), the fit radius, the covariance model (exponential is
 # the default), and whether or not the nugget and process variance
@@ -27,34 +27,25 @@
 #'
 #' \code{NSconvo_fit} estimates the parameters of the nonstationary
 #' convolution-based spatial model. Required inputs are the observed data and
-#' locations (a geoR object with $coords and $data).
-#' Optional inputs include mixture component locations (if not provided,
+#' locations. Optional inputs include mixture component locations (if not provided,
 #' the number of mixture component locations are required), the fit radius,
 #' the covariance model (exponential is the default), and whether or not the
 #' nugget and process variance will be spatially-varying.
 #'
-#' @param geodata A list containing elements \code{coords} and \code{data} as
-#' described next. Typically an object of the class "\code{geodata}", although
-#' a geodata object only allows \code{data} to be a vector (no replicates).
-#' If not provided, the arguments \code{coords} and \code{data} must be
-#' provided instead.
 #' @param sp.SPDF A "\code{SpatialPointsDataFrame}" object, which contains the
 #' spatial coordinates and additional attribute variables corresponding to the
 #' spatoal coordinates
 #' @param coords An N x 2 matrix where each row has the two-dimensional
-#' coordinates of the N data locations. By default, it takes the \code{coords}
-#' component of the argument \code{geodata}, if provided.
+#' coordinates of the N data locations.
 #' @param data A vector or matrix with N rows, containing the data values.
 #' Inputting a vector corresponds to a single replicate of data, while
 #' inputting a matrix corresponds to replicates. In the case of replicates,
 #' the model assumes the replicates are independent and identically
 #' distributed.
 #' @param cov.model A string specifying the model for the correlation
-#' function; following \code{geoR}, defaults to \code{"exponential"}.
+#' function; defaults to \code{"exponential"}.
 #' Options available in this package are: "\code{exponential}",
-#' \code{"cauchy"}, \code{"matern"}, \code{"circular"}, \code{"cubic"},
-#' \code{"gaussian"}, \code{"spherical"}, and \code{"wave"}. For further
-#' details, see documentation for \code{\link[geoR]{cov.spatial}}.
+#' \code{"matern"}, and \code{"gaussian"}.
 #' @param mean.model An object of class \code{\link[stats]{formula}},
 #' specifying the mean model to be used. Defaults to an intercept only.
 #' @param mc.locations Optional; matrix of mixture component locations.
@@ -202,18 +193,19 @@
 #' \item{kappa}{Scalar; fixed value of kappa.}
 #'
 #' @examples
+#' \dontrun{
 #' # Using white noise data
 #' fit.model <- NSconvo_fit( coords = cbind( runif(100), runif(100)),
 #' data = rnorm(100), fit.radius = 0.4, N.mc = 4 )
+#' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 #' @importFrom stats lm
 #' @importFrom stats optim
 #' @importFrom stats dist
 
-NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
-                         coords = geodata$coords, data = geodata$data,
+NSconvo_fit <- function( sp.SPDF = NULL,
+                         coords = NULL, data = NULL,
                          cov.model = "exponential", mean.model = data ~ 1,
                          mc.locations = NULL, N.mc = NULL, lambda.w = NULL,
                          fixed.nugg2.var = NULL, mean.model.df = NULL,
@@ -231,20 +223,15 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   #===========================================================================
   # Formatting for coordinates/data
   #===========================================================================
-  if( is.null(geodata) == FALSE ){
-    if( class(geodata) != "geodata" ){
-      stop("Please use a geodata object for the 'geodata = ' input.")
-    }
-    coords <- geodata$coords
-    data <- geodata$data
-  }
+  if( is.null(coords) ) stop("Please provide a Nx2 matrix of spatial coordinates.")
+  if( is.null(data) ) stop("Please provide a vector of observed data values.")
+
   if( is.null(sp.SPDF) == FALSE ){
     if( class(sp.SPDF) != "SpatialPointsDataFrame" ){
       stop("Please use a SpatialPointsDataFrame object for the 'sp.SPDF = ' input.")
     }
-    geodata <- geoR::as.geodata( sp.SPDF )
-    coords <- geodata$coords
-    data <- geodata$data
+    coords <- sp.SPDF$coords
+    data <- sp.SPDF$data
   }
 
   coords <- as.matrix(coords)
@@ -253,11 +240,8 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   p <- dim(data)[2]
 
   # Make sure cov.model is one of the permissible options
-  if( cov.model != "cauchy" & cov.model != "matern" & cov.model != "circular" &
-        cov.model != "cubic" & cov.model != "gaussian" & cov.model != "exponential" &
-        cov.model != "spherical" & cov.model != "wave" ){
-    stop("Please specify a valid covariance model (cauchy, matern,\ncircular, cubic, gaussian,
-          exponential, spherical, or wave).")
+  if( cov.model != "matern" & cov.model != "gaussian" & cov.model != "exponential" ){
+    stop("Please specify a valid covariance model (matern, gaussian, or exponential).")
   }
 
   # Check that ns.mean = TRUE is only used where applicable
@@ -488,60 +472,27 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
     beta.cov.save <- array(NA, dim = c(ncol(Xmat), ncol(Xmat), K))
     beta.coefs.save <- list()
 
+    # Distance between coords and mc.locations
+    coords_mc_dist <- mahalanobis.dist(data.x = coords, data.y = mc.locations, vc = diag(2))
+
     # Estimate the kernel function for each mixture component location,
     # completely specified by the kernel covariance matrix
     for( k in 1:K ){
 
+      # Select local locations
+      ind_local <- (coords_mc_dist[,k] <= fit.radius)
+
+      # Subset
+      temp.locations <- coords[ind_local,]
+      n.fit <- dim(temp.locations)[1]
+      temp.data <- as.matrix(data[ind_local,], nrow=n.fit)
+      temp.nugg2.var <- fixed.nugg2.var[ind_local, ind_local]
+
       if( is.null(mean.model.df) == TRUE ){
-        # Select coordinates in a square
-        coords.sub <- (abs(coords[,1] - mc.locations[k,1]) <= fit.radius
-                       & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius))
-        # Subset
-        temp.locs <- coords[coords.sub,]
-        temp.dat <- data[coords.sub,]
-        temp.n2.var <- fixed.nugg2.var[coords.sub, coords.sub]
-        X.tem <- as.matrix(Xmat[coords.sub,])
-
-        # Isolate the data/locations to be used for calculating the local kernel
-        distances <- rep(NA,dim(temp.locs)[1])
-
-        for(i in 1:dim(temp.locs)[1]){
-          distances[i] <- sqrt(sum((temp.locs[i,] - mc.locations[k,])^2))
-        }
-
-        temp.locations <- temp.locs[distances <= fit.radius,]
-        Xtemp <- X.tem[distances <= fit.radius,]
-        n.fit <- dim(temp.locations)[1]
-        temp.dat <- as.matrix( temp.dat, nrow=n.fit)
-        temp.data <- temp.dat[distances <= fit.radius,]
-        temp.data <- as.matrix(temp.data, nrow=n.fit)
-        temp.nugg2.var <- temp.n2.var[distances <= fit.radius, distances <= fit.radius]
+        Xtemp <- as.matrix(Xmat[ind_local,])
       }
       if( is.null(mean.model.df) == FALSE ){
-
-        # Select coordinates in a square
-        coords.sub <- (abs(coords[,1] - mc.locations[k,1]) <= fit.radius
-                       & (abs(coords[,2] - mc.locations[k,2]) <= fit.radius))
-
-        temp.locs <- coords[coords.sub,]
-        temp.dat <- data[coords.sub,]
-        temp.n2.var <- fixed.nugg2.var[coords.sub, coords.sub]
-        temp.mmdf <- mean.model.df[coords.sub, ]
-
-        # Isolate the data/locations to be used for calculating the local kernel
-        distances <- rep(NA,dim(temp.locs)[1])
-
-        for(i in 1:dim(temp.locs)[1]){
-          distances[i] <- sqrt(sum((temp.locs[i,] - mc.locations[k,])^2))
-        }
-
-        temp.locations <- temp.locs[distances <= fit.radius,]
-        n.fit <- dim(temp.locations)[1]
-        temp.dat <- as.matrix( temp.dat, nrow=n.fit)
-        temp.data <- temp.dat[distances <= fit.radius,]
-        temp.data <- as.matrix(temp.data, nrow=n.fit)
-        temp.nugg2.var <- temp.n2.var[distances <= fit.radius,distances <= fit.radius]
-        temp.mmdf <- temp.mmdf[distances <= fit.radius,]
+        temp.mmdf <- mean.model.df[ind_local, ]
         Xtemp <- matrix( unname( lm( mean.model, x=TRUE, data = temp.mmdf )$x ), nrow=n.fit )
       }
 
@@ -966,7 +917,7 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
         }
         if( method == "reml" ){
           dist.k <- mahalanobis.dist( data.x = temp.locations, vc = mc.kernels[,,k] )
-          NS.cov.k <- covMLE[5]*cov.spatial(dist.k, cov.model = cov.model,
+          NS.cov.k <- covMLE[5]*cov_spatial(dist.k, cov.model = cov.model,
                                             cov.pars = c(1,1), kappa = covMLE[6])
           Data.cov.k <- NS.cov.k + diag(rep(covMLE[4],n.fit)) + temp.nugg2.var
           Data.chol.k <- chol(Data.cov.k)
@@ -995,57 +946,88 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   #===========================================================================
   # Calculate the weights for each observation location
   #===========================================================================
-  weights <- matrix(NA, N, K)
-  for(n in 1:N){for(k in 1:K){
-    weights[n,k] <- exp(-sum((coords[n,] - mc.locations[k,])^2)/(2*lambda.w))
-  }
-    # Normalize the weights
-    weights[n,] <- weights[n,]/sum(weights[n,])
-  }
+  # Weights
+  weights.unnorm <- exp( -mahalanobis.dist(data.x = coords, data.y = mc.locations, vc = diag(2))^2/(2*lambda.w) )
+  weights <- t(apply(X = weights.unnorm, MARGIN = 1, FUN = function(x){x/sum(x)}))
 
   #===========================================================================
   # Calculate the kernel ellipses and other spatially-varying quantities
   #===========================================================================
+  obs.kernel11 <- rowSums( t(t(weights)*mc.kernels[1,1,]) )
+  obs.kernel22 <- rowSums( t(t(weights)*mc.kernels[2,2,]) )
+  obs.kernel12 <- rowSums( t(t(weights)*mc.kernels[1,2,]) )
+
   kernel.ellipses <- array(0, dim=c(2,2,N))
-  for(n in 1:N){
-    for(k in 1:K){
-      kernel.ellipses[,,n] <- kernel.ellipses[,,n] + weights[n,k]*mc.kernels[,,k]
-    }
-  }
+  kernel.ellipses[1,1,] <- obs.kernel11
+  kernel.ellipses[1,2,] <- obs.kernel12
+  kernel.ellipses[2,1,] <- obs.kernel12
+  kernel.ellipses[2,2,] <- obs.kernel22
 
   # If specified: calculate the spatially-varying nugget and variance
   if( ns.nugget == TRUE ){
-    mc.nuggets <- as.numeric(MLEs.save$tausq)
-    obs.nuggets <- rep(0,N)
-    for(n in 1:N){
-      for(k in 1:K){
-        obs.nuggets[n] <- obs.nuggets[n] + weights[n,k]*mc.nuggets[k]
-      }
-    }
-    # obs.nuggets <- obs.nuggets + fixed.nugg2.var
+    obs.nuggets <- rowSums( t(t(weights)*MLEs.save$tausq) )
   }
 
   if( ns.variance == TRUE ){
-    mc.variance <- as.numeric(MLEs.save$sigmasq)
-    obs.variance <- rep(0,N)
-    for(n in 1:N){
-      for(k in 1:K){
-        obs.variance[n] <- obs.variance[n] + weights[n,k]*mc.variance[k]
-      }
-    }
+    obs.variance <- rowSums( t(t(weights)*MLEs.save$sigmasq) )
   }
 
   if( ns.mean == TRUE ){
-    obs.beta <- matrix(0, N, ncol(Xmat))
-    for( t in 1:ncol(Xmat)){
-      for(n in 1:N){
-        for(k in 1:K){
-          obs.beta[n,t] <- obs.beta[n,t] + weights[n,k]*beta.GLS.save[k,t]
-        }
-      }
+    obs.beta <- NULL
+    for(t in 1:ncol(beta.GLS.save)){
+      obs.beta <- cbind(obs.beta, rowSums( t(t(weights)*beta.GLS.save[,t]) ))
     }
   }
   cat("-----------------------------------------------------------\n")
+
+  #===========================================================================
+  # Calculate the nonstationary scale/distance matrices
+  #===========================================================================
+  arg11 <- obs.kernel11
+  arg22 <- obs.kernel22
+  arg12 <- obs.kernel12
+
+  # Scale matrix
+  det1 <- arg11*arg22 - arg12^2
+
+  mat11_1 <- matrix(arg11, nrow = N) %x% matrix(1, ncol = N)
+  mat11_2 <- matrix(1, nrow = N) %x% matrix(arg11, ncol = N)
+  mat22_1 <- matrix(arg22, nrow = N) %x% matrix(1, ncol = N)
+  mat22_2 <- matrix(1, nrow = N) %x% matrix(arg22, ncol = N)
+  mat12_1 <- matrix(arg12, nrow = N) %x% matrix(1, ncol = N)
+  mat12_2 <- matrix(1, nrow = N) %x% matrix(arg12, ncol = N)
+
+  mat11 <- 0.5*(mat11_1 + mat11_2)
+  mat22 <- 0.5*(mat22_1 + mat22_2)
+  mat12 <- 0.5*(mat12_1 + mat12_2)
+
+  det12 <- mat11*mat22 - mat12^2
+
+  Scale.mat <- diag(sqrt(sqrt(det1))) %*% sqrt(1/det12) %*% diag(sqrt(sqrt(det1)))
+
+  # Distance matrix
+  inv11 <- mat22/det12
+  inv22 <- mat11/det12
+  inv12 <- -mat12/det12
+
+  dists1 <- as.matrix(dist(coords[,1], upper = T, diag = T))
+  dists2 <- as.matrix(dist(coords[,2], upper = T, diag = T))
+
+  temp1_1 <- matrix(coords[,1], nrow = N) %x% matrix(1, ncol = N)
+  temp1_2 <- matrix(1, nrow = N) %x% matrix(coords[,1], ncol = N)
+  temp2_1 <- matrix(coords[,2], nrow = N) %x% matrix(1, ncol = N)
+  temp2_2 <- matrix(1, nrow = N) %x% matrix(coords[,2], ncol = N)
+
+  sgn.mat1 <- ( temp1_1 - temp1_2 >= 0 )
+  sgn.mat1[sgn.mat1 == FALSE] <- -1
+  sgn.mat2 <- ( temp2_1 - temp2_2 >= 0 )
+  sgn.mat2[sgn.mat2 == FALSE] <- -1
+
+  dists1.sq <- dists1^2
+  dists2.sq <- dists2^2
+  dists12 <- sgn.mat1*dists1*sgn.mat2*dists2
+
+  Dist.mat <- sqrt( inv11*dists1.sq + 2*inv12*dists12 + inv22*dists2.sq )
 
   #===========================================================================
   # Global parameter estimation
@@ -1053,44 +1035,10 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
   # First, for models without kappa.
   if( cov.model != "matern" & cov.model != "cauchy" ){
 
-    cat("Calculating the nonstationary correlation matrix.\n")
     KAPPA <- NULL
     #====================================
     # Calculate the correlation matrix
-
-    Scale.mat <- matrix(rep(NA, N^2), nrow=N)
-    Dist.mat <- matrix(rep(NA, N^2), nrow=N)
-    # Calculate the elements of the observed correlations matrix.
-    for(i in 1:N){
-
-      # Diagonal elements
-      Kerneli <- kernel.ellipses[,,i]
-      det_i <- Kerneli[1,1]*Kerneli[2,2] - Kerneli[1,2]*Kerneli[2,1]
-
-      Scale.mat[i,i] <- 1
-      Dist.mat[i,i] <- 0
-
-      # Ui <- chol(Kerneli)
-
-      if(i < N){
-        for(j in (i+1):N){ # Off-diagonal elements
-
-          Kernelj <- kernel.ellipses[,,j]
-          det_j <- Kernelj[1,1]*Kernelj[2,2] - Kernelj[1,2]*Kernelj[2,1]
-
-          avg_ij <- 0.5 * (Kerneli + Kernelj)
-          det_ij <- avg_ij[1,1]*avg_ij[2,2] - avg_ij[1,2]*avg_ij[2,1]
-
-          Scale.mat[i,j] <- sqrt( sqrt(det_i*det_j) / det_ij )
-          Dist.mat[i,j] <- sqrt( t(coords[i,]-coords[j,]) %*% solve(avg_ij) %*% (coords[i,]-coords[j,]) )
-
-          Scale.mat[j,i] <- Scale.mat[i,j]
-          Dist.mat[j,i] <- Dist.mat[i,j]
-
-        }
-      }
-    }
-    Unscl.corr <- cov.spatial( Dist.mat, cov.model = cov.model,
+    Unscl.corr <- cov_spatial( Dist.mat, cov.model = cov.model,
                                cov.pars = c(1,1), kappa = KAPPA )
     NS.corr <- Scale.mat*Unscl.corr
 
@@ -1135,7 +1083,6 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
       obs.variance <- rep(sigmasq.MLE, N)
     }
-
     if( ns.nugget == TRUE & ns.variance == FALSE ){
       if(print.progress){
         cat("Calculating the variance parameter MLEs. \n")
@@ -1171,7 +1118,6 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
       obs.variance <- rep(sigmasq.MLE, N)
 
     }
-
     if( ns.nugget == FALSE & ns.variance == TRUE ){
       if(print.progress){
         cat("Calculating the variance parameter MLEs. \n")
@@ -1206,7 +1152,6 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
       ObsCov <- diag(sqrt(obs.variance)) %*% NS.corr %*% diag(sqrt(obs.variance))
 
     }
-
     if( ns.nugget == TRUE & ns.variance == TRUE ){
 
       Cov <- diag( sqrt(obs.variance) ) %*% NS.corr %*% diag( sqrt(obs.variance) )
@@ -1218,46 +1163,8 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
     }
     kappa.MLE <- NA
   }
-
   # Next, for models with kappa.
   if( cov.model == "matern" || cov.model == "cauchy" ){
-    cat("Calculating the nonstationary correlation matrix.\n")
-
-    #====================================
-    # Calculate the correlation matrix
-
-    Scale.mat <- matrix(rep(NA, N^2), nrow=N)
-    Dist.mat <- matrix(rep(NA, N^2), nrow=N)
-    # Calculate the elements of the observed correlations matrix.
-    for(i in 1:N){
-
-      # Diagonal elements
-      Kerneli <- kernel.ellipses[,,i]
-      det_i <- Kerneli[1,1]*Kerneli[2,2] - Kerneli[1,2]*Kerneli[2,1]
-
-      Scale.mat[i,i] <- 1
-      Dist.mat[i,i] <- 0
-
-      #Ui <- chol(Kerneli)
-
-      if(i < N){
-        for(j in (i+1):N){ # Off-diagonal elements
-
-          Kernelj <- kernel.ellipses[,,j]
-          det_j <- Kernelj[1,1]*Kernelj[2,2] - Kernelj[1,2]*Kernelj[2,1]
-
-          avg_ij <- 0.5 * (Kerneli + Kernelj)
-          det_ij <- avg_ij[1,1]*avg_ij[2,2] - avg_ij[1,2]*avg_ij[2,1]
-
-          Scale.mat[i,j] <- sqrt( sqrt(det_i*det_j) / det_ij )
-          Dist.mat[i,j] <- sqrt( t(coords[i,]-coords[j,]) %*% solve(avg_ij) %*% (coords[i,]-coords[j,]) )
-
-          Scale.mat[j,i] <- Scale.mat[i,j]
-          Dist.mat[j,i] <- Dist.mat[i,j]
-
-        }
-      }
-    }
 
     #====================================
     # Global parameter estimation
@@ -1296,11 +1203,10 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
         global.lik <- overall.MLEs$value
         ObsNuggMat <- diag(rep(tausq.MLE,N)) + fixed.nugg2.var
-        ObsCov <- sigmasq.MLE * Scale.mat * cov.spatial( Dist.mat, cov.model = cov.model,
+        ObsCov <- sigmasq.MLE * Scale.mat * cov_spatial( Dist.mat, cov.model = cov.model,
                                                          cov.pars = c(1,1), kappa = kappa.MLE )
         obs.variance <- rep(sigmasq.MLE, N)
       }
-
       if( ns.nugget == TRUE & ns.variance == FALSE ){
         if(print.progress){
           cat("Calculating the variance and smoothness parameter MLEs. \n")
@@ -1335,13 +1241,12 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
         global.lik <- overall.MLEs$value
         ObsNuggMat <- diag(obs.nuggets) + fixed.nugg2.var
-        ObsCov <- sigmasq.MLE * Scale.mat * cov.spatial( Dist.mat, cov.model = cov.model,
+        ObsCov <- sigmasq.MLE * Scale.mat * cov_spatial( Dist.mat, cov.model = cov.model,
                                                          cov.pars = c(1,1), kappa = kappa.MLE )
 
         obs.variance <- rep(sigmasq.MLE, N)
 
       }
-
       if( ns.nugget == FALSE & ns.variance == TRUE ){
         if(print.progress){
           cat("Calculating the variance and smoothness parameter MLEs. \n")
@@ -1376,11 +1281,10 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 
         global.lik <- overall.MLEs$value
         ObsNuggMat <- diag(rep(tausq.MLE,N)) + fixed.nugg2.var
-        ObsCov <- diag(sqrt(obs.variance)) %*% (Scale.mat * cov.spatial( Dist.mat, cov.model = cov.model,
+        ObsCov <- diag(sqrt(obs.variance)) %*% (Scale.mat * cov_spatial( Dist.mat, cov.model = cov.model,
                                                                          cov.pars = c(1,1), kappa = kappa.MLE )) %*% diag(sqrt(obs.variance))
 
       }
-
       if( ns.nugget == TRUE & ns.variance == TRUE ){
         if(print.progress){
           cat("Calculating the smoothness parameter MLE. \n")
@@ -1415,24 +1319,17 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
         global.lik <- overall.MLEs$value
 
         ObsNuggMat <- diag(obs.nuggets) + fixed.nugg2.var
-        ObsCov <- diag(sqrt(obs.variance)) %*% (Scale.mat * cov.spatial( Dist.mat, cov.model = cov.model,
+        ObsCov <- diag(sqrt(obs.variance)) %*% (Scale.mat * cov_spatial( Dist.mat, cov.model = cov.model,
                                                                          cov.pars = c(1,1), kappa = kappa.MLE )) %*% diag(sqrt(obs.variance))
 
       }
     } else{
-
       kappa.MLE <- kappa
-
       global.lik <- NA
-
       ObsNuggMat <- diag(obs.nuggets) + fixed.nugg2.var
-      ObsCov <- diag(sqrt(obs.variance)) %*% (Scale.mat * cov.spatial( Dist.mat, cov.model = cov.model,
+      ObsCov <- diag(sqrt(obs.variance)) %*% (Scale.mat * cov_spatial( Dist.mat, cov.model = cov.model,
                                                                        cov.pars = c(1,1), kappa = kappa.MLE )) %*% diag(sqrt(obs.variance))
-
-
     }
-
-
   }
 
   Data.Cov <- ObsNuggMat + ObsCov
@@ -1551,223 +1448,225 @@ NSconvo_fit <- function( geodata = NULL, sp.SPDF = NULL,
 #' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 #'
 
-predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
-                            pred.fixed.nugg2.var = NULL, ... )
-{
+predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL, pred.fixed.nugg2.var = NULL, ... ){
   if( !inherits(object, "NSconvo") ){
-    warning("Object is not of type NSconvo.")
+    stop("Object is not of type NSconvo.")
   }
-  else{
-    {
-      pred.coords <- as.matrix(pred.coords)
-      M <- dim(pred.coords)[1]
-      mc.locations <- object$mc.locations
-      K <- dim(mc.locations)[1]
-      mc.kernels <- object$mc.kernels
-      kernel.ellipses <- object$kernel.ellipses
-      ns.nugget <- object$ns.nugget
-      ns.variance <- object$ns.variance
-      ns.mean <- object$ns.mean
-      beta.MLE <- as.matrix(object$beta.GLS)
-      beta.est <- object$beta.est
-      tausq.est <- object$tausq.est
-      sigmasq.est <- object$sigmasq.est
-      if( object$fix.kappa ){
-        kappa.MLE <- object$kappa
-      } else{
-        kappa.MLE <- object$kappa.MLE
-      }
-      mc.MLEs <- object$MLEs.save
-      Cov.mat.chol <- object$Cov.mat.chol
-      data <- object$data
-      N <- length(object$data)
-      coords <- object$coords
-      cov.model <- object$cov.model
-      Xmat <- object$Xmat
-      lambda.w <- object$lambda.w
-      fixed.nugg2.var <- object$fixed.nugg2.var
 
-      if (is.null(pred.covariates) == TRUE) {
-        Xpred <- rep(1, M)
-      }
-      if (is.null(pred.covariates) == FALSE) {
-        Xpred <- cbind(rep(1, M), pred.covariates)
-      }
+  #===========================================================================
+  # Setup
+  #===========================================================================
+  pred.coords <- as.matrix(pred.coords)
+  M <- dim(pred.coords)[1]
+  mc.locations <- object$mc.locations
+  K <- dim(mc.locations)[1]
+  mc.kernels <- object$mc.kernels
+  kernel.ellipses <- object$kernel.ellipses
+  ns.nugget <- object$ns.nugget
+  ns.variance <- object$ns.variance
+  ns.mean <- object$ns.mean
+  beta.MLE <- as.matrix(object$beta.GLS)
+  beta.est <- object$beta.est
+  tausq.est <- object$tausq.est
+  sigmasq.est <- object$sigmasq.est
+  if( object$fix.kappa ){
+    kappa.MLE <- object$kappa
+  } else{
+    kappa.MLE <- object$kappa.MLE
+  }
+  mc.MLEs <- object$MLEs.save
+  Cov.mat.chol <- object$Cov.mat.chol
+  data <- object$data
+  N <- length(object$data)
+  coords <- object$coords
+  cov.model <- object$cov.model
+  Xmat <- object$Xmat
+  lambda.w <- object$lambda.w
+  fixed.nugg2.var <- object$fixed.nugg2.var
+  if (is.null(pred.covariates) == TRUE) {
+    Xpred <- rep(1, M)
+  }
+  if (is.null(pred.covariates) == FALSE) {
+    Xpred <- cbind(rep(1, M), pred.covariates)
+  }
+  data <- matrix(data, nrow = N)
+  p <- dim(data)[2]
 
-      data <- matrix(data, nrow = N)
-      p <- dim(data)[2]
-      pred.weights <- matrix(NA, M, K)
-      for (m in 1:M) {
-        for (k in 1:K) {
-          pred.weights[m, k] <- exp(-sum((pred.coords[m, ] -
-                                            mc.locations[k, ])^2)/(2 * lambda.w))
-        }
-        pred.weights[m, ] <- pred.weights[m, ]/sum(pred.weights[m,])
-      }
-      pred.kernel.ellipses <- array(0, dim = c(2, 2, M))
-      for (m in 1:M) {
-        for (k in 1:K) {
-          pred.kernel.ellipses[, , m] <- pred.kernel.ellipses[,, m] + pred.weights[m, k] * mc.kernels[, , k]
-        }
-      }
-      if (ns.nugget == TRUE) {
-        mc.nuggets <- mc.MLEs$tausq
-        pred.nuggets <- rep(0, M)
-        for (m in 1:M) {
-          for (k in 1:K) {
-            pred.nuggets[m] <- pred.nuggets[m] + pred.weights[m,
-                                                              k] * mc.nuggets[k]
-          }
-        }
-      }
-      if (ns.nugget == FALSE) {
-        pred.nuggets <- rep(tausq.est, M)
-      }
-      if (ns.variance == TRUE) {
-        obs.variance <- sigmasq.est
-        mc.variance <- mc.MLEs$sigmasq
-        pred.variance <- rep(0, M)
-        for (m in 1:M) {
-          for (k in 1:K) {
-            pred.variance[m] <- pred.variance[m] + pred.weights[m,
-                                                                k] * mc.variance[k]
-          }
-        }
-      }
-      if (ns.variance == FALSE) {
-        obs.variance <- rep(sigmasq.est, N)
-        pred.variance <- rep(sigmasq.est, M)
-      }
+  kernel11 <- kernel.ellipses[1,1,]
+  kernel22 <- kernel.ellipses[2,2,]
+  kernel12 <- kernel.ellipses[1,2,]
 
-      if( is.null(pred.fixed.nugg2.var) == TRUE ){
-        pred.fixed.nugg2.var <- matrix(0,M,M)
-      } else{
-        if( !is.matrix(pred.fixed.nugg2.var) ){ # Convert to a covariance matrix if specified as a vector
-          pred.fixed.nugg2.var <- diag(pred.fixed.nugg2.var)
-        }
-      }
+  #===========================================================================
+  # Calculate prediction weights and parameters
+  #===========================================================================
+  # Weights
+  pred.weights.unnorm <- exp( -mahalanobis.dist(data.x = pred.coords, data.y = mc.locations,
+                                                 vc = diag(2))^2/(2*lambda.w) )
+  pred.weights <- t(apply(X = pred.weights.unnorm, MARGIN = 1, FUN = function(x){x/sum(x)}))
 
-      if( ns.mean == TRUE ){
-        pred.beta <- matrix(0, M, ncol(Xmat))
-        for( t in 1:ncol(Xmat)){
-          for(m in 1:M){
-            for(k in 1:K){
-              pred.beta[m,t] <- pred.beta[m,t] + pred.weights[m,k]*beta.MLE[k,t]
-            }
-          }
-        }
-      }
+  # Calculate the kernel ellipses
+  pred.kernel11 <- rowSums( t(t(pred.weights)*mc.kernels[1,1,]) )
+  pred.kernel22 <- rowSums( t(t(pred.weights)*mc.kernels[2,2,]) )
+  pred.kernel12 <- rowSums( t(t(pred.weights)*mc.kernels[1,2,]) )
 
-      cat("-----------------------------------------------------------\n")
-      cat(paste("Calculating the ", M, " by ", N, " cross-correlation matrix.\n", sep=""))
-      if( max(c(M,N)) > 1000 ){
-        cat("NOTE: this step can be VERY time consuming.\n")
-      }
-      Scale.cross <- matrix(NA, M, N)
-      Dist.cross <- matrix(NA, M, N)
-      cat("Progress: \n")
-      cat("|--------|---------|---------|---------|")
-      cat("\n|")
-      for (i in 1:N) {
-        Kerneli <- kernel.ellipses[, , i]
-        det_i <- Kerneli[1, 1] * Kerneli[2, 2] - Kerneli[1, 2] *
-          Kerneli[2, 1]
-        for (j in 1:M) {
-          Kernelj <- pred.kernel.ellipses[, , j]
-          det_j <- Kernelj[1, 1] * Kernelj[2, 2] - Kernelj[1,
-                                                           2] * Kernelj[2, 1]
-          avg_ij <- 0.5 * (Kerneli + Kernelj)
-          Uij <- chol(avg_ij)
-          det_ij <- avg_ij[1, 1] * avg_ij[2, 2] - avg_ij[1,
-                                                         2] * avg_ij[2, 1]
-          vec_ij <- backsolve(Uij, (coords[i, ] - pred.coords[j,
-                                                              ]), transpose = TRUE)
-          Scale.cross[j, i] <- sqrt(sqrt(det_i * det_j)/det_ij)
-          Dist.cross[j, i] <- sqrt(sum(vec_ij^2))
-        }
-        if (i%%floor(N/38) == 0) {
-          cat("-")
-        }
-      }
-      cat("|\n")
-      Unscl.cross <- cov.spatial(Dist.cross, cov.model = cov.model,
-                                 cov.pars = c(1, 1), kappa = kappa.MLE)
-      NS.cross.corr <- Scale.cross * Unscl.cross
-      CrossCov <- diag(sqrt(pred.variance)) %*% NS.cross.corr %*%
-        diag(sqrt(obs.variance))
+  pred.kernel.ellipses <- array(0, dim=c(2,2,M))
+  pred.kernel.ellipses[1,1,] <- pred.kernel11
+  pred.kernel.ellipses[1,2,] <- pred.kernel12
+  pred.kernel.ellipses[2,1,] <- pred.kernel12
+  pred.kernel.ellipses[2,2,] <- pred.kernel22
 
-      crscov.Cinv <- t(backsolve(Cov.mat.chol,
-                                 backsolve(Cov.mat.chol, t(CrossCov), transpose = TRUE)))
+  if (ns.nugget == TRUE) {
+    pred.nuggets <- rowSums( t(t(pred.weights)*mc.MLEs$tausq) )
+  }
+  if (ns.nugget == FALSE) {
+    pred.nuggets <- rep(tausq.est, M)
+  }
+  if (ns.variance == TRUE) {
+    obs.variance <- sigmasq.est
+    pred.variance <- rowSums( t(t(pred.weights)*mc.MLEs$sigmasq) )
+  }
+  if (ns.variance == FALSE) {
+    obs.variance <- rep(sigmasq.est, N)
+    pred.variance <- rep(sigmasq.est, M)
+  }
 
-      cat("Calculating kriging means and standard errors...\n")
-      pred.means <- matrix(NA, M, p)
-      if( ns.mean == FALSE ){
-        for (i in 1:p) {
-          pred.means[, i] <- Xpred %*% beta.MLE + crscov.Cinv %*% (object$data[, i] - Xmat %*% beta.MLE)
-        }
-      }
-      if( ns.mean == TRUE ){
-        pred.Xbeta.hat <- rep(0,M)
-        obs.Xbeta.hat <- rep(0,N)
-        for( t in 1:ncol(Xmat) ){
-          pred.Xbeta.hat <- pred.Xbeta.hat + Xpred[,t]*pred.beta[,t]
-          obs.Xbeta.hat <- obs.Xbeta.hat + Xmat[,t]*beta.est[,t]
-        }
-        for (i in 1:p) {
-          pred.means[, i] <- pred.Xbeta.hat + crscov.Cinv %*% (object$data[, i] - obs.Xbeta.hat)
-        }
-      }
-
-      pred.SDs <- sqrt((pred.variance + pred.nuggets + diag(pred.fixed.nugg2.var)) - diag(crscov.Cinv %*% t(CrossCov)))
-      output <- list(pred.means = pred.means, pred.SDs = pred.SDs)
-      cat("Done.")
-      cat("\n-----------------------------------------------------------\n")
-      return(output)
+  if( is.null(pred.fixed.nugg2.var) == TRUE ){
+    pred.fixed.nugg2.var <- matrix(0,M,M)
+  } else{
+    if( !is.matrix(pred.fixed.nugg2.var) ){ # Convert to a covariance matrix if specified as a vector
+      pred.fixed.nugg2.var <- diag(pred.fixed.nugg2.var)
     }
   }
+
+  if( ns.mean == TRUE ){
+    pred.beta <- NULL
+    for(t in 1:ncol(beta.MLE)){
+      pred.beta <- cbind(pred.beta, rowSums( t(t(pred.weights)*beta.MLE[,t]) ))
+    }
+  }
+
+  cat("-----------------------------------------------------------\n")
+  cat(paste("Calculating the ", M, " by ", N, " cross-correlation matrix.\n", sep=""))
+  if( max(c(M,N)) > 1000 ){
+    cat("NOTE: this step can be take a few minutes.\n")
+  }
+
+  kern11 <- kernel11
+  kern22 <- kernel22
+  kern12 <- kernel12
+  Pkern11 <- pred.kernel11
+  Pkern22 <- pred.kernel22
+  Pkern12 <- pred.kernel12
+  Pcoords <- pred.coords
+
+  # Scale matrix
+  det1 <- kern11*kern22 - kern12^2
+  Pdet1 <- Pkern11*Pkern22 - Pkern12^2
+
+  mat11_1 <- matrix(kern11, nrow = N) %x% matrix(1, ncol = M)
+  mat11_2 <- matrix(1, nrow = N) %x% matrix(Pkern11, ncol = M)
+
+  mat22_1 <- matrix(kern22, nrow = N) %x% matrix(1, ncol = M)
+  mat22_2 <- matrix(1, nrow = N) %x% matrix(Pkern22, ncol = M)
+
+  mat12_1 <- matrix(kern12, nrow = N) %x% matrix(1, ncol = M)
+  mat12_2 <- matrix(1, nrow = N) %x% matrix(Pkern12, ncol = M)
+
+  mat11 <- 0.5*(mat11_1 + mat11_2)
+  mat22 <- 0.5*(mat22_1 + mat22_2)
+  mat12 <- 0.5*(mat12_1 + mat12_2)
+
+  det12 <- mat11*mat22 - mat12^2
+
+  Scale.cross <- t(diag(sqrt(sqrt(det1))) %*% sqrt(1/det12) %*% diag(sqrt(sqrt(Pdet1))))
+
+  # Distance matrix
+  inv11 <- mat22/det12
+  inv22 <- mat11/det12
+  inv12 <- -mat12/det12
+
+  dists1 <- mahalanobis.dist(data.y = Pcoords[,1], data.x = coords[,1], vc = diag(1))
+  dists2 <- mahalanobis.dist(data.y = Pcoords[,2], data.x = coords[,2], vc = diag(1))
+
+  temp1_1 <- matrix(coords[,1], nrow = N) %x% matrix(1, ncol = M)
+  temp1_2 <- matrix(1, nrow = N) %x% matrix(Pcoords[,1], ncol = M)
+  temp2_1 <- matrix(coords[,2], nrow = N) %x% matrix(1, ncol = M)
+  temp2_2 <- matrix(1, nrow = N) %x% matrix(Pcoords[,2], ncol = M)
+
+  sgn.mat1 <- ( temp1_1 - temp1_2 >= 0 )
+  sgn.mat1[sgn.mat1 == FALSE] <- -1
+  sgn.mat2 <- ( temp2_1 - temp2_2 >= 0 )
+  sgn.mat2[sgn.mat2 == FALSE] <- -1
+
+  dists1.sq <- dists1^2
+  dists2.sq <- dists2^2
+  dists12 <- sgn.mat1*dists1*sgn.mat2*dists2
+
+  Dist.cross <- t(sqrt( inv11*dists1.sq + 2*inv12*dists12 + inv22*dists2.sq ))
+
+  # Combine
+  Unscl.cross <- cov_spatial(Dist.cross, cov.model = cov.model, cov.pars = c(1, 1), kappa = kappa.MLE)
+  NS.cross.corr <- Scale.cross * Unscl.cross
+  CrossCov <- diag(sqrt(pred.variance)) %*% NS.cross.corr %*% diag(sqrt(obs.variance))
+  crscov.Cinv <- t(backsolve(Cov.mat.chol, backsolve(Cov.mat.chol, t(CrossCov), transpose = TRUE)))
+
+  cat("Calculating kriging means and standard errors...\n")
+  pred.means <- matrix(NA, M, p)
+  if( ns.mean == FALSE ){
+    for (i in 1:p) {
+      pred.means[, i] <- Xpred %*% beta.MLE + crscov.Cinv %*% (object$data[, i] - Xmat %*% beta.MLE)
+    }
+  }
+  if( ns.mean == TRUE ){
+    pred.Xbeta.hat <- rep(0,M)
+    obs.Xbeta.hat <- rep(0,N)
+    for( t in 1:ncol(Xmat) ){
+      pred.Xbeta.hat <- pred.Xbeta.hat + Xpred[,t]*pred.beta[,t]
+      obs.Xbeta.hat <- obs.Xbeta.hat + Xmat[,t]*beta.est[,t]
+    }
+    for (i in 1:p) {
+      pred.means[, i] <- pred.Xbeta.hat + crscov.Cinv %*% (object$data[, i] - obs.Xbeta.hat)
+    }
+  }
+
+  pred.SDs <- sqrt((pred.variance + pred.nuggets + diag(pred.fixed.nugg2.var)) - diag(crscov.Cinv %*% t(CrossCov)))
+  output <- list(pred.means = pred.means, pred.SDs = pred.SDs)
+  cat("Done.")
+  cat("\n-----------------------------------------------------------\n")
+  return(output)
 }
 
 #======================================================================================
 # Fit the anisotropic model
 #======================================================================================
 # The Aniso_fit() function estimates the parameters of the anisotropic spatial
-# model. Required inputs are the observed data and locations (a geoR object with
-# $coords and $data). Optional inputs include the covariance model (exponential is
+# model. Required inputs are the observed data and locations.
+# Optional inputs include the covariance model (exponential is
 # the default) and the mean model.
 #======================================================================================
 #ROxygen comments ----
 #' Fit the stationary spatial model
 #'
 #' \code{Aniso_fit} estimates the parameters of the stationary spatial model.
-#' Required inputs are the observed data and locations (a geoR object
-#' with $coords and $data). Optional inputs include the covariance model
-#' (exponential is the default).
+#' Required inputs are the observed data and locations.
+#' Optional inputs include the covariance model (exponential is the default).
 #'
-#' @param geodata A list containing elements \code{coords} and \code{data} as
-#' described next. Typically an object of the class "\code{geodata}", although
-#' a geodata object only allows \code{data} to be a vector (no replicates).
-#' If not provided, the arguments \code{coords} and \code{data} must be
-#' provided instead.
 #' @param sp.SPDF A "\code{SpatialPointsDataFrame}" object, which contains the
 #' spatial coordinates and additional attribute variables corresponding to the
 #' spatoal coordinates
 #' @param coords An N x 2 matrix where each row has the two-dimensional
-#' coordinates of the N data locations. By default, it takes the \code{coords}
-#' component of the argument \code{geodata}, if provided.
+#' coordinates of the N data locations.
 #' @param data A vector or matrix with N rows, containing the data values.
 #' Inputting a vector corresponds to a single replicate of data, while
 #' inputting a matrix corresponds to replicates. In the case of replicates,
 #' the model assumes the replicates are independent and identically
 #' distributed.
 #' @param cov.model A string specifying the model for the correlation
-#' function; following \code{geoR}, defaults to \code{"exponential"}.
+#' function; defaults to \code{"exponential"}.
 #' Options available in this package are: "\code{exponential}",
-#' \code{"cauchy"}, \code{"matern"}, \code{"circular"}, \code{"cubic"},
-#' \code{"gaussian"}, \code{"spherical"}, and \code{"wave"}. For further
-#' details, see documentation for \code{\link[geoR]{cov.spatial}}.
+#' \code{"matern"}, or \code{"gaussian"}.
 #' @param mean.model An object of class \code{\link[stats]{formula}},
 #' specifying the mean model to be used. Defaults to an intercept only.
 #' @param fixed.nugg2.var Optional; describes the variance/covariance for
@@ -1847,19 +1746,19 @@ predict.NSconvo <- function(object, pred.coords, pred.covariates = NULL,
 #' \item{kappa}{Scalar; fixed value of kappa.}
 #'
 #' @examples
+#' \dontrun{
 #' # Using iid standard Gaussian data
 #' aniso.fit <- Aniso_fit( coords = cbind(runif(100), runif(100)),
 #' data = rnorm(100) )
-#'
+#' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 #' @importFrom StatMatch mahalanobis.dist
 #' @importFrom stats lm
 #' @importFrom stats optim
 
-Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
-                       coords = geodata$coords, data = geodata$data,
+Aniso_fit <- function( sp.SPDF = NULL,
+                       coords = NULL, data = NULL,
                        cov.model = "exponential", mean.model = data ~ 1,
                        fixed.nugg2.var = NULL, method = "reml",
                        fix.tausq = FALSE, tausq = 0,
@@ -1870,20 +1769,12 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
   #===========================================================================
   # Formatting for coordinates/data
   #===========================================================================
-  if( is.null(geodata) == FALSE ){
-    if( class(geodata) != "geodata" ){
-      cat("\nPlease use a geodata object for the 'geodata = ' input.\n")
-    }
-    coords <- geodata$coords
-    data <- geodata$data
-  }
   if( is.null(sp.SPDF) == FALSE ){
     if( class(sp.SPDF) != "SpatialPointsDataFrame" ){
       cat("\nPlease use a SpatialPointsDataFrame object for the 'sp.SPDF = ' input.\n")
     }
-    geodata <- geoR::as.geodata( sp.SPDF )
-    coords <- geodata$coords
-    data <- geodata$data
+    coords <- sp.SPDF$coords
+    data <- sp.SPDF$data
   }
 
   N <- dim(coords)[1]
@@ -1891,10 +1782,8 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
   p <- dim(data)[2]
 
   # Make sure cov.model is one of the permissible options
-  if( cov.model != "cauchy" & cov.model != "matern" & cov.model != "circular" &
-      cov.model != "cubic" & cov.model != "gaussian" & cov.model != "exponential" &
-      cov.model != "spherical" & cov.model != "wave" ){
-    cat("Please specify a valid covariance model (cauchy, matern, circular, cubic, gaussian, exponential, spherical, or wave).")
+  if( cov.model != "matern" & cov.model != "gaussian" & cov.model != "exponential" ){
+    stop("Please specify a valid covariance model (matern, gaussian, or exponential).")
   }
 
   #===========================================================================
@@ -2223,7 +2112,7 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
   # Calculate the covariance matrix using the MLEs
   #===========================================================================
   distances <- mahalanobis.dist( data.x = coords, vc = aniso.mat )
-  NS.cov <- covMLE[5] * cov.spatial( distances, cov.model = cov.model,
+  NS.cov <- covMLE[5] * cov_spatial( distances, cov.model = cov.model,
                                        cov.pars = c(1,1), kappa = covMLE[6] )
   Data.Cov <- NS.cov + diag(rep(covMLE[4], N)) + fixed.nugg2.var
 
@@ -2315,7 +2204,6 @@ Aniso_fit <- function( geodata = NULL, sp.SPDF = NULL,
 #' }
 #'
 #' @export
-#' @importFrom geoR cov.spatial
 #' @importFrom StatMatch mahalanobis.dist
 
 predict.Aniso <- function(object, pred.coords, pred.covariates = NULL,
@@ -2360,7 +2248,7 @@ predict.Aniso <- function(object, pred.coords, pred.covariates = NULL,
       p <- dim(data)[2]
       CC.distances <- mahalanobis.dist(data.x = pred.coords, data.y = coords,
                                        vc = aniso.mat)
-      CrossCov <- sigmasq.est * cov.spatial(CC.distances, cov.model = cov.model,
+      CrossCov <- sigmasq.est * cov_spatial(CC.distances, cov.model = cov.model,
                                             cov.pars = c(1, 1), kappa = kappa.MLE)
       crscov.Cinv <- t(backsolve(Cov.mat.chol,
                                  backsolve(Cov.mat.chol, t(CrossCov), transpose = TRUE)))

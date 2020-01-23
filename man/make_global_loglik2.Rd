@@ -35,4 +35,3 @@ make_global_loglik2( data, Xmat, Corr, obs.nuggets, nugg2.var )
 }
 
 }
-

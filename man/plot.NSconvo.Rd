@@ -60,4 +60,3 @@ plot.NSconvo( NSconvo.object )
 }
 
 }
-

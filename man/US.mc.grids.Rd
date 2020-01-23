@@ -18,4 +18,3 @@ A list of two mixture component grids for fitting the nonstationary
 model to the western United States precipitation data.
 }
 \keyword{datasets}
-

@@ -44,4 +44,3 @@ obs.variance, obs.nuggets, nugg2.var )
 }
 
 }
-

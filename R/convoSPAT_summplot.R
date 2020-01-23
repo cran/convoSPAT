@@ -406,7 +406,7 @@ else{
       Scale.cross[j] <- sqrt(sqrt(det_i * det_j)/det_ij)
       Dist.cross[j] <- sqrt(sum(vec_ij^2))
     }
-    Unscl.cross <- geoR::cov.spatial(Dist.cross, cov.model = cov.model,
+    Unscl.cross <- cov_spatial(Dist.cross, cov.model = cov.model,
                                      cov.pars = c(1, 1), kappa = kappa)
     Cov <- matrix(Scale.cross * Unscl.cross, ncol = 1)
 
@@ -475,7 +475,7 @@ plot.Aniso <- function(x, ref.loc = NULL, all.pred.locs = NULL,
     Sigma <- Pmat %*% Dmat %*% t(Pmat)
     distances <- StatMatch::mahalanobis.dist(data.x = all.pred.locs,
                                              data.y = t(ref.loc), vc = Sigma)
-    Cov <- cov.spatial(distances, cov.model = cov.model,
+    Cov <- cov_spatial(distances, cov.model = cov.model,
                        cov.pars = c(1, 1), kappa = kappa)
     Cov <- matrix(Cov, ncol = 1)
 

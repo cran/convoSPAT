@@ -44,4 +44,3 @@ pred.covariates = matrix(c(1,1), ncol=2) )
 }
 
 }
-

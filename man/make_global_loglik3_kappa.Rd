@@ -40,4 +40,3 @@ make_global_loglik3_kappa( data, Xmat, cov.model, Scalemat, Distmat, obs.varianc
 }
 
 }
-

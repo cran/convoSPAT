@@ -21,4 +21,3 @@ components (two eigenvalues and angle of rotation).
 kernel_cov(c(1, 2, pi/3))
 
 }
-

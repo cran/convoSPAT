@@ -127,11 +127,10 @@ f_mc_kernels <- function( y.min = 0, y.max = 5, x.min = 0, x.max = 5,
 #' @param kappa Scalar; true smoothness.
 #' @param covariates Matrix with \code{N.obs} rows, corresponding to
 #' covariate information for each of the simualted values.
-#' @param cov.model A string specifying the correlation function. Options
-#' available in this package are: "\code{exponential}", \code{"cauchy"},
-#' \code{"matern"}, \code{"circular"}, \code{"cubic"}, \code{"gaussian"},
-#' \code{"spherical"}, and \code{"wave"}. See \code{\link[geoR]{cov.spatial}}
-#' for further documentation.
+#' @param cov.model A string specifying the model for the correlation
+#' function; defaults to \code{"exponential"}.
+#' Options available in this package are: "\code{exponential}",
+#' \code{"matern"}, and \code{"gaussian"}.
 #'
 #' @return A list with the following components:
 #' \item{sim.locations}{Matrix of locations for the simulated values.}
@@ -252,7 +251,7 @@ NSconvo_sim <- function( grid = TRUE, y.min = 0, y.max = 5, x.min = 0,
       }
     }
   }
-  Unscl.corr <- geoR::cov.spatial( Dist.mat, cov.model = cov.model,
+  Unscl.corr <- cov_spatial( Dist.mat, cov.model = cov.model,
                              cov.pars = c(1,1), kappa = kappa )
   NS.corr <- Scale.mat*Unscl.corr
 

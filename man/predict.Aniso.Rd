@@ -43,4 +43,3 @@ pred.coords = cbind(runif(300),runif(300)) )
 }
 
 }
-
