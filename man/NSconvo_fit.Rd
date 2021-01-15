@@ -4,16 +4,36 @@
 \alias{NSconvo_fit}
 \title{Fit the nonstationary spatial model}
 \usage{
-NSconvo_fit(sp.SPDF = NULL, coords = NULL, data = NULL,
-  cov.model = "exponential", mean.model = data ~ 1,
-  mc.locations = NULL, N.mc = NULL, lambda.w = NULL,
-  fixed.nugg2.var = NULL, mean.model.df = NULL, mc.kernels = NULL,
-  fit.radius = NULL, ns.nugget = FALSE, ns.variance = FALSE,
-  ns.mean = FALSE, local.aniso = TRUE, fix.tausq = FALSE,
-  tausq = 0, fix.kappa = FALSE, kappa = 0.5, method = "reml",
-  print.progress = TRUE, local.pars.LB = NULL, local.pars.UB = NULL,
-  global.pars.LB = NULL, global.pars.UB = NULL,
-  local.ini.pars = NULL, global.ini.pars = NULL)
+NSconvo_fit(
+  sp.SPDF = NULL,
+  coords = NULL,
+  data = NULL,
+  cov.model = "exponential",
+  mean.model = data ~ 1,
+  mc.locations = NULL,
+  N.mc = NULL,
+  lambda.w = NULL,
+  fixed.nugg2.var = NULL,
+  mean.model.df = NULL,
+  mc.kernels = NULL,
+  fit.radius = NULL,
+  ns.nugget = FALSE,
+  ns.variance = FALSE,
+  ns.mean = FALSE,
+  local.aniso = TRUE,
+  fix.tausq = FALSE,
+  tausq = 0,
+  fix.kappa = FALSE,
+  kappa = 0.5,
+  method = "reml",
+  print.progress = TRUE,
+  local.pars.LB = NULL,
+  local.pars.UB = NULL,
+  global.pars.LB = NULL,
+  global.pars.UB = NULL,
+  local.ini.pars = NULL,
+  global.ini.pars = NULL
+)
 }
 \arguments{
 \item{sp.SPDF}{A "\code{SpatialPointsDataFrame}" object, which contains the

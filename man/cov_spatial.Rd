@@ -4,8 +4,12 @@
 \alias{cov_spatial}
 \title{Calculate spatial covariance.}
 \usage{
-cov_spatial(Dist.mat, cov.model = "exponential", cov.pars = c(1, 1),
-  kappa = 0.5)
+cov_spatial(
+  Dist.mat,
+  cov.model = "exponential",
+  cov.pars = c(1, 1),
+  kappa = 0.5
+)
 }
 \arguments{
 \item{Dist.mat}{A matrix of scaled distances.}

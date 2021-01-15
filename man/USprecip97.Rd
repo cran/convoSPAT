@@ -4,7 +4,8 @@
 \name{USprecip97}
 \alias{USprecip97}
 \title{Annual precipitation measurements from the western United States, 1997}
-\format{A data frame with the following variables:
+\format{
+A data frame with the following variables:
 \describe{
    \item{longitude}{Longitude of the monitoring site.}
    \item{latitude}{Latitude of the monitoring site.}
@@ -13,7 +14,8 @@
    \item{log.annual.ppt}{Annual precipitation for the monitoring site, in
    log millimeters.}
 
-}}
+}
+}
 \source{
 \url{http://www.image.ucar.edu/GSP/Data/US.monthly.met/}
 }

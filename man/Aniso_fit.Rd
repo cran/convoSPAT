@@ -4,11 +4,22 @@
 \alias{Aniso_fit}
 \title{Fit the stationary spatial model}
 \usage{
-Aniso_fit(sp.SPDF = NULL, coords = NULL, data = NULL,
-  cov.model = "exponential", mean.model = data ~ 1,
-  fixed.nugg2.var = NULL, method = "reml", fix.tausq = FALSE,
-  tausq = 0, fix.kappa = FALSE, kappa = 0.5, local.pars.LB = NULL,
-  local.pars.UB = NULL, local.ini.pars = NULL)
+Aniso_fit(
+  sp.SPDF = NULL,
+  coords = NULL,
+  data = NULL,
+  cov.model = "exponential",
+  mean.model = data ~ 1,
+  fixed.nugg2.var = NULL,
+  method = "reml",
+  fix.tausq = FALSE,
+  tausq = 0,
+  fix.kappa = FALSE,
+  kappa = 0.5,
+  local.pars.LB = NULL,
+  local.pars.UB = NULL,
+  local.ini.pars = NULL
+)
 }
 \arguments{
 \item{sp.SPDF}{A "\code{SpatialPointsDataFrame}" object, which contains the

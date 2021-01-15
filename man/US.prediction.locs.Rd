@@ -4,12 +4,14 @@
 \name{US.prediction.locs}
 \alias{US.prediction.locs}
 \title{Prediction locations for the western United States}
-\format{A matrix with two columns:
+\format{
+A matrix with two columns:
 \describe{
    \item{Column 1}{Longitude of the prediction grid.}
    \item{Column 2}{Latitude of the prediction grid.}
 
-}}
+}
+}
 \usage{
 US.prediction.locs
 }

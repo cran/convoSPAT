@@ -5,8 +5,13 @@
 \title{Obtain predictions at unobserved locations for the stationary
 spatial model.}
 \usage{
-\method{predict}{Aniso}(object, pred.coords, pred.covariates = NULL,
-  pred.fixed.nugg2.var = NULL, ...)
+\method{predict}{Aniso}(
+  object,
+  pred.coords,
+  pred.covariates = NULL,
+  pred.fixed.nugg2.var = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{An "Aniso" object, from \code{Aniso_fit}.}

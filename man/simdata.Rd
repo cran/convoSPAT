@@ -4,7 +4,8 @@
 \name{simdata}
 \alias{simdata}
 \title{Simulated nonstationary dataset}
-\format{A list with the following objects:
+\format{
+A list with the following objects:
 \describe{
    \item{sim.locations}{A matrix of longitude/latitude coordinates of the
    simulated locations.}
@@ -21,7 +22,8 @@
    \item{holdout.index}{Vector; indicates which of the simulated locations
    should be used in the hold-out sample.}
 
-}}
+}
+}
 \usage{
 simdata
 }

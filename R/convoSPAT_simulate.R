@@ -180,6 +180,12 @@ NSconvo_sim <- function( grid = TRUE, y.min = 0, y.max = 5, x.min = 0,
     }
   }
 
+  if( is.null(mc.kernels.obj) == TRUE ){
+    if( is.null(mc.kernels) & is.null(mc.locations) ){
+      stop("Please input a non-null value for 'mc.kernels.obj' (generated using the function\n   f_mc_kernels()), or specify non-null values for 'mc.kernels' and 'mc.locations'.")
+    }
+  }
+
   if( is.null(mc.kernels) == TRUE ){
     mc.kernels <- mc.kernels.obj$mc.kernels
   }

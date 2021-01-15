@@ -4,12 +4,14 @@
 \name{US.mc.grids}
 \alias{US.mc.grids}
 \title{Mixture component grids for the western United States}
-\format{A list with two elements:
+\format{
+A list with two elements:
 \describe{
    \item{Element 1}{Coarse mixture component grid.}
    \item{Element 2}{Fine mixture component grid.}
 
-}}
+}
+}
 \usage{
 US.mc.grids
 }

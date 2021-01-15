@@ -4,10 +4,20 @@
 \alias{make_local_lik}
 \title{Constructor functions for local parameter estimation.}
 \usage{
-make_local_lik(locations, cov.model, data, Xmat, nugg2.var = matrix(0,
-  nrow(locations), nrow(locations)), tausq = 0, kappa = 0.5,
-  fixed = rep(FALSE, 6), method = "reml", local.aniso = TRUE,
-  fix.tausq = FALSE, fix.kappa = FALSE)
+make_local_lik(
+  locations,
+  cov.model,
+  data,
+  Xmat,
+  nugg2.var = matrix(0, nrow(locations), nrow(locations)),
+  tausq = 0,
+  kappa = 0.5,
+  fixed = rep(FALSE, 6),
+  method = "reml",
+  local.aniso = TRUE,
+  fix.tausq = FALSE,
+  fix.kappa = FALSE
+)
 }
 \arguments{
 \item{locations}{A matrix of locations.}

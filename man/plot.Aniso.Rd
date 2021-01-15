@@ -4,8 +4,7 @@
 \alias{plot.Aniso}
 \title{Plot of the estimated correlations from the stationary model.}
 \usage{
-\method{plot}{Aniso}(x, ref.loc = NULL, all.pred.locs = NULL,
-  grid = TRUE, ...)
+\method{plot}{Aniso}(x, ref.loc = NULL, all.pred.locs = NULL, grid = TRUE, ...)
 }
 \arguments{
 \item{x}{An "Aniso" object, from Aniso_fit().}

@@ -5,8 +5,13 @@
 \title{Obtain predictions at unobserved locations for the nonstationary
 spatial model.}
 \usage{
-\method{predict}{NSconvo}(object, pred.coords, pred.covariates = NULL,
-  pred.fixed.nugg2.var = NULL, ...)
+\method{predict}{NSconvo}(
+  object,
+  pred.coords,
+  pred.covariates = NULL,
+  pred.fixed.nugg2.var = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{A "NSconvo" object, from \code{NSconvo_fit}.}

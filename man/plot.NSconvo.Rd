@@ -4,10 +4,21 @@
 \alias{plot.NSconvo}
 \title{Plot from the nonstationary model.}
 \usage{
-\method{plot}{NSconvo}(x, plot.ellipses = TRUE, fit.radius = NULL,
-  aniso.mat = NULL, true.mc = NULL, ref.loc = NULL,
-  all.pred.locs = NULL, grid = TRUE, true.col = 1, aniso.col = 4,
-  ns.col = 2, plot.mc.locs = TRUE, ...)
+\method{plot}{NSconvo}(
+  x,
+  plot.ellipses = TRUE,
+  fit.radius = NULL,
+  aniso.mat = NULL,
+  true.mc = NULL,
+  ref.loc = NULL,
+  all.pred.locs = NULL,
+  grid = TRUE,
+  true.col = 1,
+  aniso.col = 4,
+  ns.col = 2,
+  plot.mc.locs = TRUE,
+  ...
+)
 }
 \arguments{
 \item{x}{A "NSconvo" object, from NSconvo_fit().}

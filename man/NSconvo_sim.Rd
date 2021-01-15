@@ -4,12 +4,25 @@
 \alias{NSconvo_sim}
 \title{Simulate data from the nonstationary model.}
 \usage{
-NSconvo_sim(grid = TRUE, y.min = 0, y.max = 5, x.min = 0,
-  x.max = 5, N.obs = 20^2, sim.locations = NULL,
-  mc.kernels.obj = NULL, mc.kernels = NULL, mc.locations = NULL,
-  lambda.w = NULL, tausq = 0.1, sigmasq = 1, beta.coefs = 4,
-  kappa = NULL, covariates = rep(1, N.obs),
-  cov.model = "exponential")
+NSconvo_sim(
+  grid = TRUE,
+  y.min = 0,
+  y.max = 5,
+  x.min = 0,
+  x.max = 5,
+  N.obs = 20^2,
+  sim.locations = NULL,
+  mc.kernels.obj = NULL,
+  mc.kernels = NULL,
+  mc.locations = NULL,
+  lambda.w = NULL,
+  tausq = 0.1,
+  sigmasq = 1,
+  beta.coefs = 4,
+  kappa = NULL,
+  covariates = rep(1, N.obs),
+  cov.model = "exponential"
+)
 }
 \arguments{
 \item{grid}{Logical; indicates of the simulated data should fall on a
